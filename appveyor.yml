@@ -1,8 +1,9 @@
 install:
-  - pip install wheel pytest pyreadline
+  - pip install wheel pytest pytest-xdist pyreadline
   - pip install -e .
 
 build: off
 
 test_script:
-  - pytest certbot/tests
+  - pytest --numprocesses auto --pyargs acme
+  - pytest --numprocesses auto --pyargs certbot
