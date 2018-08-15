@@ -1,0 +1,14 @@
+branches:
+  only:
+    - master
+    - /^\d+\.\d+\.x$/ # version branches like X.X.X
+    - /^test-.*$/
+
+install:
+  - pip install wheel pytest pytest-xdist pyreadline
+  - pip install -e .
+
+build: off
+
+test_script:
+  - pytest --numprocesses auto --pyargs certbot
