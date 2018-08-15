@@ -1,8 +1,8 @@
 install:
   - pip install wheel pytest
-
-build:
   - pip install -e .
+
+build: off
 
 test_script:
   - pytest certbot/tests
