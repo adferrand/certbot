@@ -1,6 +1,9 @@
 """Test certbot.display.completer."""
 import os
-import readline
+try:
+    import readline # pylint: disable=import-error
+except ImportError:
+    import pyreadline as readline # pylint: disable=import-error
 import string
 import sys
 import unittest
