@@ -5,5 +5,4 @@ install:
 build: off
 
 test_script:
-  - pytest --numprocesses auto --pyargs acme
   - pytest --numprocesses auto --pyargs certbot
