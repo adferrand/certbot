@@ -9,6 +9,8 @@ import pkg_resources
 import shutil
 import tempfile
 import unittest
+import pytest
+import sys
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -379,3 +381,10 @@ def hold_lock(cv, lock_path):  # pragma: no cover
     cv.notify()
     cv.wait()
     my_lock.release()
+
+def broken_on_windows(function):
+    reason = 'Test is broken and ignored on windows but should be fixed.'
+    return pytest.mark.skipif(
+        sys.platform == 'win32' 
+        and os.environ.get('SKIP_BROKEN_TESTS_ON_WINDOWS', 'true') == 'true',
+        reason = reason)(function)

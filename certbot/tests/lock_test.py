@@ -52,6 +52,7 @@ class LockFileTest(test_util.TempDirTestCase):
             self.assertRaises, errors.LockError, self._call, self.lock_path)
         test_util.lock_and_call(assert_raises, self.lock_path)
 
+    @test_util.broken_on_windows
     def test_locked_repr(self):
         lock_file = self._call(self.lock_path)
         locked_repr = repr(lock_file)
@@ -69,6 +70,7 @@ class LockFileTest(test_util.TempDirTestCase):
         self.assertTrue(lock_file.__class__.__name__ in lock_repr)
         self.assertTrue(self.lock_path in lock_repr)
 
+    @test_util.broken_on_windows
     def test_race(self):
         should_delete = [True, False]
         stat = os.stat
@@ -89,16 +91,25 @@ class LockFileTest(test_util.TempDirTestCase):
         lock_file.release()
         self.assertFalse(os.path.exists(self.lock_path))
 
-    @mock.patch('certbot.compat.fcntl.lockf')
-    def test_unexpected_lockf_err(self, mock_lockf):
-        msg = 'hi there'
-        mock_lockf.side_effect = IOError(msg)
+    def test_unexpected_lockf_err(self):
+        lock_function_to_mock = None
         try:
-            self._call(self.lock_path)
-        except IOError as err:
-            self.assertTrue(msg in str(err))
-        else:  # pragma: no cover
-            self.fail('IOError not raised')
+            # Windows specific
+            import fcntl
+            lock_function_to_mock = 'certbot.lock.compat.fcntl.lockf'
+        except ImportError:
+            # Linux specific
+            lock_function_to_mock = 'certbot.lock.compat.msvcrt.locking'
+
+        with mock.patch(lock_function_to_mock) as mock_lockf:
+            msg = 'hi there'
+            mock_lockf.side_effect = IOError(msg)
+            try:
+                self._call(self.lock_path)
+            except IOError as err:
+                self.assertTrue(msg in str(err))
+            else:  # pragma: no cover
+                self.fail('IOError not raised')
 
     @mock.patch('certbot.lock.os.stat')
     def test_unexpected_stat_err(self, mock_stat):
