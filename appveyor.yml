@@ -5,8 +5,7 @@ branches:
     - /^test-.*$/
 
 install:
-  - pip install wheel pytest pytest-xdist pyreadline
-  - pip install -e .
+  - pip install tox
 
 build: off
 
