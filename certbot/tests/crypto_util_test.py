@@ -44,6 +44,7 @@ class InitSaveKeyTest(test_util.TempDirTestCase):
         from certbot.crypto_util import init_save_key
         return init_save_key(key_size, key_dir, 'key-certbot.pem')
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.crypto_util.make_key')
     def test_success(self, mock_make):
         mock_make.return_value = b'key_pem'
@@ -130,6 +131,7 @@ class ImportCSRFileTest(unittest.TestCase):
         from certbot.crypto_util import import_csr_file
         return import_csr_file(*args, **kwargs)
 
+    @test_util.broken_on_windows
     def test_der_csr(self):
         csrfile = test_util.vector_path('csr_512.der')
         data = test_util.load_vector('csr_512.der')
@@ -143,6 +145,7 @@ class ImportCSRFileTest(unittest.TestCase):
              ["Example.com"],),
             self._call(csrfile, data))
 
+    @test_util.broken_on_windows
     def test_pem_csr(self):
         csrfile = test_util.vector_path('csr_512.pem')
         data = test_util.load_vector('csr_512.pem')
@@ -376,7 +379,7 @@ class NotAfterTest(unittest.TestCase):
 
 class Sha256sumTest(unittest.TestCase):
     """Tests for certbot.crypto_util.notAfter"""
-
+    @test_util.broken_on_windows
     def test_sha256sum(self):
         from certbot.crypto_util import sha256sum
         self.assertEqual(sha256sum(CERT_PATH),
@@ -386,6 +389,7 @@ class Sha256sumTest(unittest.TestCase):
 class CertAndChainFromFullchainTest(unittest.TestCase):
     """Tests for certbot.crypto_util.cert_and_chain_from_fullchain"""
 
+    @test_util.broken_on_windows
     def test_cert_and_chain_from_fullchain(self):
         cert_pem = CERT.decode()
         chain_pem = cert_pem + SS_CERT.decode()
@@ -395,8 +399,6 @@ class CertAndChainFromFullchainTest(unittest.TestCase):
         for fullchain in (fullchain_pem, spacey_fullchain_pem):
             cert_out, chain_out = cert_and_chain_from_fullchain(fullchain)
             self.assertEqual(cert_out, cert_pem.replace('\r\n', '\n'))
-            print(chain_out)
-            print(chain_pem)
             self.assertEqual(chain_out, chain_pem)
 
 

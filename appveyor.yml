@@ -11,4 +11,4 @@ install:
 build: off
 
 test_script:
-  - pytest --numprocesses auto --pyargs certbot
+  - tox -c tox-win.ini

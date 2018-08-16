@@ -142,6 +142,7 @@ class AuthenticatorTest(unittest.TestCase):
             self.assertRaises(errors.PluginError, self.auth.perform, [])
         os.chmod(self.path, 0o700)
 
+    @test_util.broken_on_windows
     @mock.patch("certbot.plugins.webroot.os.chown")
     def test_failed_chown(self, mock_chown):
         mock_chown.side_effect = OSError(errno.EACCES, "msg")
@@ -163,6 +164,7 @@ class AuthenticatorTest(unittest.TestCase):
             self.auth.perform([achall])
         self.assertEqual(self.config.webroot_map[achall.domain], new_webroot)
 
+    @test_util.broken_on_windows
     def test_perform_permissions(self):
         self.auth.prepare()
 
@@ -272,6 +274,7 @@ class WebrootActionTest(unittest.TestCase):
                                  action="append", default=[])
         Authenticator.inject_parser_options(self.parser, "webroot")
 
+    @test_util.broken_on_windows
     def test_webroot_map_action(self):
         args = self.parser.parse_args(
             ["--webroot-map", '{{"thing.com":"{0}"}}'.format(self.path)])

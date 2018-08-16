@@ -38,6 +38,7 @@ class RunScriptTest(unittest.TestCase):
 
         self.assertRaises(errors.SubprocessError, self._call, ["test"])
 
+    @test_util.broken_on_windows
     @mock.patch("certbot.util.subprocess.Popen")
     def test_failure(self, mock_popen):
         mock_popen().communicate.return_value = ("", "")
@@ -89,6 +90,7 @@ class LockDirUntilExit(test_util.TempDirTestCase):
         import certbot.util
         reload_module(certbot.util)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.util.logger')
     @mock.patch('certbot.util.atexit_register')
     def test_it(self, mock_register, mock_logger):
@@ -142,18 +144,20 @@ class MakeOrVerifyDirTest(test_util.TempDirTestCase):
         self.path = os.path.join(self.tempdir, "foo")
         os.mkdir(self.path, 0o400)
 
-        self.uid = os.getuid()
+        self.uid = compat.os_geteuid()
 
     def _call(self, directory, mode):
         from certbot.util import make_or_verify_dir
         return make_or_verify_dir(directory, mode, self.uid, strict=True)
 
+    @test_util.broken_on_windows
     def test_creates_dir_when_missing(self):
         path = os.path.join(self.tempdir, "bar")
         self._call(path, 0o650)
         self.assertTrue(os.path.isdir(path))
         self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o650)
 
+    @test_util.broken_on_windows
     def test_existing_correct_mode_does_not_fail(self):
         self._call(self.path, 0o400)
         self.assertEqual(stat.S_IMODE(os.stat(self.path).st_mode), 0o400)
@@ -178,16 +182,18 @@ class CheckPermissionsTest(test_util.TempDirTestCase):
     def setUp(self):
         super(CheckPermissionsTest, self).setUp()
 
-        self.uid = os.getuid()
+        self.uid = compat.os_geteuid()
 
     def _call(self, mode):
         from certbot.util import check_permissions
         return check_permissions(self.tempdir, mode, self.uid)
 
+    @test_util.broken_on_windows
     def test_ok_mode(self):
         os.chmod(self.tempdir, 0o600)
         self.assertTrue(self._call(0o600))
 
+    @test_util.broken_on_windows
     def test_wrong_mode(self):
         os.chmod(self.tempdir, 0o400)
         self.assertFalse(self._call(0o600))
@@ -211,6 +217,7 @@ class UniqueFileTest(test_util.TempDirTestCase):
         fd.close()
         self.assertEqual(open(name).read(), "bar")
 
+    @test_util.broken_on_windows
     def test_right_mode(self):
         self.assertEqual(0o700, os.stat(self._call(0o700)[1]).st_mode & 0o777)
         self.assertEqual(0o100, os.stat(self._call(0o100)[1]).st_mode & 0o777)
@@ -262,6 +269,7 @@ class UniqueLineageNameTest(test_util.TempDirTestCase):
         self.assertTrue(isinstance(name, six.string_types))
         self.assertTrue("wow-0009.conf" in name)
 
+    @test_util.broken_on_windows
     @mock.patch("certbot.util.os.fdopen")
     def test_failure(self, mock_fdopen):
         err = OSError("whoops")
@@ -269,6 +277,7 @@ class UniqueLineageNameTest(test_util.TempDirTestCase):
         mock_fdopen.side_effect = err
         self.assertRaises(OSError, self._call, "wow")
 
+    @test_util.broken_on_windows
     @mock.patch("certbot.util.os.fdopen")
     def test_subsequent_failure(self, mock_fdopen):
         self._call("wow")

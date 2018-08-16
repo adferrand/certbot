@@ -184,6 +184,7 @@ class InstallerTest(test_util.ConfigTestCase):
         from certbot.constants import SSL_DHPARAMS_SRC
         return crypto_util.sha256sum(SSL_DHPARAMS_SRC)
 
+    @test_util.broken_on_windows
     def test_current_file_hash_in_all_hashes(self):
         from certbot.constants import ALL_SSL_DHPARAMS_HASHES
         self.assertTrue(self._current_ssl_dhparams_hash() in ALL_SSL_DHPARAMS_HASHES,
@@ -305,6 +306,7 @@ class TLSSNI01Test(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tempdir)
 
+    @test_util.broken_on_windows
     def test_setup_challenge_cert(self):
         # This is a helper function that can be used for handling
         # open context managers more elegantly. It avoids dealing with

@@ -12,6 +12,7 @@ import six
 from acme import messages
 from acme.magic_typing import Optional  # pylint: disable=unused-import, no-name-in-module
 
+from certbot import compat
 from certbot import constants
 from certbot import errors
 from certbot import util
@@ -87,6 +88,7 @@ class PostArgParseSetupTest(test_util.ConfigTestCase):
         self.temp_handler.close()
         super(PostArgParseSetupTest, self).tearDown()
 
+    @test_util.broken_on_windows
     def test_common(self):
         with mock.patch('certbot.log.logging.getLogger') as mock_get_logger:
             mock_get_logger.return_value = self.root_logger
@@ -112,10 +114,12 @@ class PostArgParseSetupTest(test_util.ConfigTestCase):
         else:
             self.assertEqual(level, -self.config.verbose_count * 10)
 
+    @test_util.broken_on_windows
     def test_debug(self):
         self.config.debug = True
         self.test_common()
 
+    @test_util.broken_on_windows
     def test_quiet(self):
         self.config.quiet = True
         self.test_common()
@@ -133,6 +137,7 @@ class SetupLogFileHandlerTest(test_util.ConfigTestCase):
         super(SetupLogFileHandlerTest, self).setUp()
         self.config.max_log_backups = 42
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main.logging.handlers.RotatingFileHandler')
     def test_failure(self, mock_handler):
         mock_handler.side_effect = IOError
@@ -144,9 +149,11 @@ class SetupLogFileHandlerTest(test_util.ConfigTestCase):
         else:  # pragma: no cover
             self.fail('Error not raised.')
 
+    @test_util.broken_on_windows
     def test_success_with_rollover(self):
         self._test_success_common(should_rollover=True)
 
+    @test_util.broken_on_windows
     def test_success_without_rollover(self):
         self.config.max_log_backups = 0
         self._test_success_common(should_rollover=False)
@@ -165,6 +172,7 @@ class SetupLogFileHandlerTest(test_util.ConfigTestCase):
         backup_path = os.path.join(self.config.logs_dir, log_file + '.1')
         self.assertEqual(os.path.exists(backup_path), should_rollover)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.log.logging.handlers.RotatingFileHandler')
     def test_max_log_backups_used(self, mock_handler):
         self._call(self.config, 'test.log', '%(message)s')
@@ -257,9 +265,10 @@ class TempHandlerTest(unittest.TestCase):
     def tearDown(self):
         self.handler.close()
 
+    @test_util.broken_on_windows
     def test_permissions(self):
         self.assertTrue(
-            util.check_permissions(self.handler.path, 0o600, os.getuid()))
+            util.check_permissions(self.handler.path, 0o600, compat.os_geteuid()))
 
     def test_delete(self):
         self.handler.close()

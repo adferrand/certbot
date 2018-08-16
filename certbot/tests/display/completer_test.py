@@ -12,9 +12,9 @@ import mock
 from six.moves import reload_module  # pylint: disable=import-error
 
 from acme.magic_typing import List  # pylint: disable=unused-import, no-name-in-module
-from certbot.tests.util import TempDirTestCase
+import certbot.tests.util as test_util
 
-class CompleterTest(TempDirTestCase):
+class CompleterTest(test_util.TempDirTestCase):
     """Test certbot.display.completer.Completer."""
 
     def setUp(self):
@@ -58,6 +58,7 @@ class CompleterTest(TempDirTestCase):
 
         sys.modules['readline'] = original_readline
 
+    @test_util.broken_on_windows
     def test_context_manager_with_unmocked_readline(self):
         from certbot.display import completer
         reload_module(completer)
@@ -71,11 +72,13 @@ class CompleterTest(TempDirTestCase):
         self.assertEqual(readline.get_completer(), original_completer)
         self.assertEqual(readline.get_completer_delims(), original_delims)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.display.completer.readline', autospec=True)
     def test_context_manager_libedit(self, mock_readline):
         mock_readline.__doc__ = 'libedit'
         self._test_context_manager_with_mock_readline(mock_readline)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.display.completer.readline', autospec=True)
     def test_context_manager_readline(self, mock_readline):
         mock_readline.__doc__ = 'GNU readline'

@@ -10,7 +10,7 @@ import mock
 
 from certbot import errors
 from certbot import interfaces
-
+from certbot.tests import util as test_util
 from certbot.display import util as display_util
 
 
@@ -224,6 +224,7 @@ class FileOutputDisplayTest(unittest.TestCase):
                 self.displayer._scrub_checklist_input(list_, TAGS))
             self.assertEqual(set_tags, exp[i])
 
+    @test_util.broken_on_windows
     @mock.patch("certbot.display.util.input_with_timeout")
     def test_directory_select(self, mock_input):
         # pylint: disable=star-args
@@ -234,6 +235,7 @@ class FileOutputDisplayTest(unittest.TestCase):
         returned = self.displayer.directory_select(*args)
         self.assertEqual(returned, (display_util.OK, user_input))
 
+    @test_util.broken_on_windows
     def test_directory_select_noninteractive(self):
         default = "/var/www/html"
         code, input_ = self._force_noninteractive(
@@ -276,6 +278,7 @@ class FileOutputDisplayTest(unittest.TestCase):
         self.displayer._print_menu("msg", CHOICES)
         self.displayer._print_menu("msg", TAGS)
 
+    @test_util.broken_on_windows
     def test_wrap_lines(self):
         # pylint: disable=protected-access
         msg = ("This is just a weak test{0}"

@@ -71,6 +71,7 @@ class AuthenticatorTest(test_util.TempDirTestCase):
         self.auth.perform([])
         self.assertTrue(self.config.manual_public_ip_logging_ok)
 
+    @test_util.broken_on_windows
     def test_script_perform(self):
         self.config.manual_public_ip_logging_ok = True
         self.config.manual_auth_hook = (
@@ -110,6 +111,7 @@ class AuthenticatorTest(test_util.TempDirTestCase):
             self.auth.env[self.tls_sni_achall]['CERTBOT_AUTH_OUTPUT'],
             tls_sni_expected)
 
+    @test_util.broken_on_windows
     @test_util.patch_get_utility()
     def test_manual_perform(self, mock_get_utility):
         self.config.manual_public_ip_logging_ok = True
@@ -127,6 +129,7 @@ class AuthenticatorTest(test_util.TempDirTestCase):
                         achall.validation(achall.account_key) in args[0])
             self.assertFalse(kwargs['wrap'])
 
+    @test_util.broken_on_windows
     def test_cleanup(self):
         self.config.manual_public_ip_logging_ok = True
         self.config.manual_auth_hook = 'echo foo;'

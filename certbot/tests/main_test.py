@@ -645,6 +645,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                     ret = main.main(args[:])  # NOTE: parser can alter its args!
         return ret, toy_stdout, stderr
 
+    @test_util.broken_on_windows
     def test_no_flags(self):
         with mock.patch('certbot.main.run') as mock_run:
             self._call([])
@@ -674,12 +675,14 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
             self.assertTrue(message in str(exc))
         self.assertTrue(exc is not None)
 
+    @test_util.broken_on_windows
     def test_noninteractive(self):
         args = ['-n', 'certonly']
         self._cli_missing_flag(args, "specify a plugin")
         args.extend(['--standalone', '-d', 'eg.is'])
         self._cli_missing_flag(args, "register before running")
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main._report_new_cert')
     @mock.patch('certbot.main.client.acme_client.Client')
     @mock.patch('certbot.main._determine_account')
@@ -710,6 +713,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
             acme_net.assert_called_once_with(mock.ANY, account=mock.ANY, verify_ssl=True,
                 user_agent=ua)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main.plug_sel.record_chosen_plugins')
     @mock.patch('certbot.main.plug_sel.pick_installer')
     def test_installer_selection(self, mock_pick_installer, _rec):
@@ -717,6 +721,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                     '--key-path', 'privkey', '--chain-path', 'chain'], mockisfile=True)
         self.assertEqual(mock_pick_installer.call_count, 1)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main._install_cert')
     @mock.patch('certbot.main.plug_sel.record_chosen_plugins')
     @mock.patch('certbot.main.plug_sel.pick_installer')
@@ -733,6 +738,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
             self.assertEqual(call_config.fullchain_path, "/tmp/chain")
             self.assertEqual(call_config.key_path, "/tmp/privkey")
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main._install_cert')
     @mock.patch('certbot.main.plug_sel.record_chosen_plugins')
     @mock.patch('certbot.main.plug_sel.pick_installer')
@@ -759,6 +765,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
             self.assertEqual(call_config.fullchain_path, "/tmp/chain")
             self.assertEqual(call_config.key_path, "/tmp/privkey")
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main.plug_sel.record_chosen_plugins')
     @mock.patch('certbot.main.plug_sel.pick_installer')
     def test_installer_param_error(self, _inst, _rec):
@@ -767,6 +774,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                           ['install', '--cert-name', 'notfound',
                            '--key-path', 'invalid'])
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main.plug_sel.record_chosen_plugins')
     @mock.patch('certbot.main.plug_sel.pick_installer')
     @mock.patch('certbot.cert_manager.get_certnames')
@@ -781,6 +789,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         self.assertTrue(mock_getcert.called)
         self.assertTrue(mock_inst.called)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main._report_new_cert')
     @mock.patch('certbot.util.exe_exists')
     def test_configurator_selection(self, mock_exe_exists, unused_report):
@@ -819,6 +828,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
             self._call(["auth", "--standalone"])
             self.assertEqual(1, mock_certonly.call_count)
 
+    @test_util.broken_on_windows
     def test_rollback(self):
         _, _, _, client = self._call(['rollback'])
         self.assertEqual(1, client.rollback.call_count)
@@ -827,25 +837,30 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         client.rollback.assert_called_once_with(
             mock.ANY, 123, mock.ANY, mock.ANY)
 
+    @test_util.broken_on_windows
     def test_config_changes(self):
         _, _, _, client = self._call(['config_changes'])
         self.assertEqual(1, client.view_config_changes.call_count)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.cert_manager.update_live_symlinks')
     def test_update_symlinks(self, mock_cert_manager):
         self._call_no_clientmock(['update_symlinks'])
         self.assertEqual(1, mock_cert_manager.call_count)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.cert_manager.certificates')
     def test_certificates(self, mock_cert_manager):
         self._call_no_clientmock(['certificates'])
         self.assertEqual(1, mock_cert_manager.call_count)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.cert_manager.delete')
     def test_delete(self, mock_cert_manager):
         self._call_no_clientmock(['delete'])
         self.assertEqual(1, mock_cert_manager.call_count)
 
+    @test_util.broken_on_windows
     def test_plugins(self):
         flags = ['--init', '--prepare', '--authenticators', '--installers']
         for args in itertools.chain(
@@ -853,6 +868,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                   for r in six.moves.range(len(flags)))):
             self._call(['plugins'] + list(args))
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main.plugins_disco')
     @mock.patch('certbot.main.cli.HelpfulArgumentParser.determine_help_topics')
     def test_plugins_no_args(self, _det, mock_disco):
@@ -890,6 +906,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         filtered = plugins.visible().ifaces()
         self.assertEqual(stdout.getvalue().strip(), str(filtered))
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main.plugins_disco')
     @mock.patch('certbot.main.cli.HelpfulArgumentParser.determine_help_topics')
     def test_plugins_init(self, _det, mock_disco):
@@ -908,6 +925,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         verified = filtered.verify()
         self.assertEqual(stdout.getvalue().strip(), str(verified))
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main.plugins_disco')
     @mock.patch('certbot.main.cli.HelpfulArgumentParser.determine_help_topics')
     def test_plugins_prepare(self, _det, mock_disco):
@@ -929,6 +947,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         available = verified.available()
         self.assertEqual(stdout.getvalue().strip(), str(available))
 
+    @test_util.broken_on_windows
     def test_certonly_abspath(self):
         cert = 'cert'
         key = 'key'
@@ -946,6 +965,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         self.assertEqual(config.chain_path, os.path.abspath(chain))
         self.assertEqual(config.fullchain_path, os.path.abspath(fullchain))
 
+    @test_util.broken_on_windows
     def test_certonly_bad_args(self):
         try:
             self._call(['-a', 'bad_auth', 'certonly'])
@@ -1002,6 +1022,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                 args += '-d foo.bar -a standalone certonly'.split()
                 self._call(args)
 
+    @test_util.broken_on_windows
     @test_util.patch_get_utility()
     def test_certonly_dry_run_new_request_success(self, mock_get_utility):
         mock_client = mock.MagicMock()
@@ -1014,6 +1035,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         # Asserts we don't suggest donating after a successful dry run
         self.assertEqual(mock_get_utility().add_message.call_count, 1)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.crypto_util.notAfter')
     @test_util.patch_get_utility()
     def test_certonly_new_request_success(self, mock_get_utility, mock_notAfter):
@@ -1036,6 +1058,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         self.assertTrue(
             'donate' in mock_get_utility().add_message.call_args[0][0])
 
+    @test_util.broken_on_windows
     def test_certonly_new_request_failure(self):
         mock_client = mock.MagicMock()
         mock_client.obtain_and_enroll_certificate.return_value = False
@@ -1115,6 +1138,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
 
         return mock_lineage, mock_get_utility, stdout
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.crypto_util.notAfter')
     def test_certonly_renewal(self, unused_notafter):
         lineage, get_utility, _ = self._test_renewal_common(True, [])
@@ -1125,6 +1149,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         self.assertTrue('fullchain.pem' in cert_msg)
         self.assertTrue('donate' in get_utility().add_message.call_args[0][0])
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.crypto_util.notAfter')
     def test_certonly_renewal_triggers(self, unused_notafter):
         # --dry-run should force renewal
@@ -1147,22 +1172,26 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
             with open(log_path) as lf:
                 print(lf.read())
 
+    @test_util.broken_on_windows
     def test_renew_verb(self):
         test_util.make_lineage(self.config.config_dir, 'sample-renewal.conf')
         args = ["renew", "--dry-run", "-tvv"]
         self._test_renewal_common(True, [], args=args, should_renew=True)
 
+    @test_util.broken_on_windows
     def test_reuse_key(self):
         test_util.make_lineage(self.config.config_dir, 'sample-renewal.conf')
         args = ["renew", "--dry-run", "--reuse-key"]
         self._test_renewal_common(True, [], args=args, should_renew=True, reuse_key=True)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.storage.RenewableCert.save_successor')
     def test_reuse_key_no_dry_run(self, unused_save_successor):
         test_util.make_lineage(self.config.config_dir, 'sample-renewal.conf')
         args = ["renew", "--reuse-key"]
         self._test_renewal_common(True, [], args=args, should_renew=True, reuse_key=True)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.renewal.should_renew')
     def test_renew_skips_recent_certs(self, should_renew):
         should_renew.return_value = False
@@ -1173,6 +1202,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         self.assertTrue('No renewals were attempted.' in stdout.getvalue())
         self.assertTrue('The following certs are not due for renewal yet:' in stdout.getvalue())
 
+    @test_util.broken_on_windows
     def test_quiet_renew(self):
         test_util.make_lineage(self.config.config_dir, 'sample-renewal.conf')
         args = ["renew", "--dry-run"]
@@ -1192,6 +1222,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         self._test_renewal_common(True, [], args=args, should_renew=False,
                                   error_expected=True)
 
+    @test_util.broken_on_windows
     def test_renew_no_hook_validation(self):
         test_util.make_lineage(self.config.config_dir, 'sample-renewal.conf')
         args = ["renew", "--dry-run", "--post-hook=no-such-command",
@@ -1200,6 +1231,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
             self._test_renewal_common(True, [], args=args, should_renew=True,
                                       error_expected=False)
 
+    @test_util.broken_on_windows
     def test_renew_verb_empty_config(self):
         rd = os.path.join(self.config.config_dir, 'renewal')
         if not os.path.exists(rd):
@@ -1209,11 +1241,13 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         args = ["renew", "--dry-run", "-tvv"]
         self._test_renewal_common(False, [], args=args, should_renew=False, error_expected=True)
 
+    @test_util.broken_on_windows
     def test_renew_with_certname(self):
         test_util.make_lineage(self.config.config_dir, 'sample-renewal.conf')
         self._test_renewal_common(True, [], should_renew=True,
             args=['renew', '--dry-run', '--cert-name', 'sample-renewal'])
 
+    @test_util.broken_on_windows
     def test_renew_with_bad_certname(self):
         self._test_renewal_common(True, [], should_renew=False,
             args=['renew', '--dry-run', '--cert-name', 'sample-renewal'],
@@ -1246,31 +1280,37 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                 else:
                     self.assertFalse(mock_renew_cert.called)
 
+    @test_util.broken_on_windows
     def test_renew_no_renewalparams(self):
         self._test_renew_common(assert_oc_called=False, error_expected=True)
 
+    @test_util.broken_on_windows
     def test_renew_no_authenticator(self):
         self._test_renew_common(renewalparams={}, assert_oc_called=False,
             error_expected=True)
 
+    @test_util.broken_on_windows
     def test_renew_with_bad_int(self):
         renewalparams = {'authenticator': 'webroot',
                          'rsa_key_size': 'over 9000'}
         self._test_renew_common(renewalparams=renewalparams, error_expected=True,
                                 assert_oc_called=False)
 
+    @test_util.broken_on_windows
     def test_renew_with_nonetype_http01(self):
         renewalparams = {'authenticator': 'webroot',
                          'http01_port': 'None'}
         self._test_renew_common(renewalparams=renewalparams,
                                 assert_oc_called=True)
 
+    @test_util.broken_on_windows
     def test_renew_with_bad_domain(self):
         renewalparams = {'authenticator': 'webroot'}
         names = ['uniçodé.com']
         self._test_renew_common(renewalparams=renewalparams, error_expected=True,
                                 names=names, assert_oc_called=False)
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.plugins.selection.choose_configurator_plugins')
     def test_renew_with_configurator(self, mock_sel):
         mock_sel.return_value = (mock.MagicMock(), mock.MagicMock())
@@ -1279,6 +1319,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
             renewalparams=renewalparams, assert_oc_called=True,
             args='renew --configurator apache'.split())
 
+    @test_util.broken_on_windows
     def test_renew_plugin_config_restoration(self):
         renewalparams = {'authenticator': 'webroot',
                          'webroot_path': 'None',
@@ -1286,18 +1327,21 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         self._test_renew_common(renewalparams=renewalparams,
                                 assert_oc_called=True)
 
+    @test_util.broken_on_windows
     def test_renew_with_webroot_map(self):
         renewalparams = {'authenticator': 'webroot'}
         self._test_renew_common(
             renewalparams=renewalparams, assert_oc_called=True,
             args=['renew', '--webroot-map', '{"example.com": "/tmp"}'])
 
+    @test_util.broken_on_windows
     def test_renew_reconstitute_error(self):
         # pylint: disable=protected-access
         with mock.patch('certbot.main.renewal._reconstitute') as mock_reconstitute:
             mock_reconstitute.side_effect = Exception
             self._test_renew_common(assert_oc_called=False, error_expected=True)
 
+    @test_util.broken_on_windows
     def test_renew_obtain_cert_error(self):
         self._make_dummy_renewal_config()
         with mock.patch('certbot.storage.RenewableCert') as mock_rc:
@@ -1311,18 +1355,21 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                 self._test_renewal_common(True, None, error_expected=True,
                                           args=['renew'], should_renew=False)
 
+    @test_util.broken_on_windows
     def test_renew_with_bad_cli_args(self):
         self._test_renewal_common(True, None, args='renew -d example.com'.split(),
                                   should_renew=False, error_expected=True)
         self._test_renewal_common(True, None, args='renew --csr {0}'.format(CSR).split(),
                                   should_renew=False, error_expected=True)
 
+    @test_util.broken_on_windows
     def test_no_renewal_with_hooks(self):
         _, _, stdout = self._test_renewal_common(
             due_for_renewal=False, extra_args=None, should_renew=False,
             args=['renew', '--post-hook', 'echo hello world'])
         self.assertTrue('No hooks were run.' in stdout.getvalue())
 
+    @test_util.broken_on_windows
     @test_util.patch_get_utility()
     @mock.patch('certbot.main._find_lineage_for_domains_and_certname')
     @mock.patch('certbot.main._init_le_client')
@@ -1363,6 +1410,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
 
         return mock_get_utility
 
+    @test_util.broken_on_windows
     def test_certonly_csr(self):
         mock_get_utility = self._test_certonly_csr_common()
         cert_msg = mock_get_utility().add_message.call_args_list[0][0][0]
@@ -1371,12 +1419,14 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         self.assertTrue(
             'donate' in mock_get_utility().add_message.call_args[0][0])
 
+    @test_util.broken_on_windows
     def test_certonly_csr_dry_run(self):
         mock_get_utility = self._test_certonly_csr_common(['--dry-run'])
         self.assertEqual(mock_get_utility().add_message.call_count, 1)
         self.assertTrue(
             'dry run' in mock_get_utility().add_message.call_args[0][0])
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main._delete_if_appropriate')
     @mock.patch('certbot.main.client.acme_client')
     def test_revoke_with_key(self, mock_acme_client,
@@ -1395,12 +1445,14 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                     jose.ComparableX509(cert),
                     mock.ANY)
 
+    @test_util.broken_on_windows
     def test_revoke_with_key_mismatch(self):
         server = 'foo.bar'
         self.assertRaises(errors.Error, self._call_no_clientmock,
             ['--cert-path', CERT, '--key-path', KEY,
                                  '--server', server, 'revoke'])
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main._delete_if_appropriate')
     @mock.patch('certbot.main._determine_account')
     def test_revoke_without_key(self, mock_determine_account,
@@ -1415,11 +1467,13 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                     jose.ComparableX509(cert),
                     mock.ANY)
 
+    @test_util.broken_on_windows
     def test_agree_dev_preview_config(self):
         with mock.patch('certbot.main.run') as mocked_run:
             self._call(['-c', test_util.vector_path('cli.ini')])
         self.assertTrue(mocked_run.called)
 
+    @test_util.broken_on_windows
     def test_register(self):
         with mock.patch('certbot.main.client') as mocked_client:
             acc = mock.MagicMock()
@@ -1436,6 +1490,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                 x = self._call_no_clientmock(["register", "--email", "user@example.org"])
                 self.assertTrue("There is an existing account" in x[0])
 
+    @test_util.broken_on_windows
     def test_update_registration_no_existing_accounts(self):
         # with mock.patch('certbot.main.client') as mocked_client:
         with mock.patch('certbot.main.account') as mocked_account:
@@ -1447,6 +1502,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                  "user@example.org"])
             self.assertTrue("Could not find an existing account" in x[0])
 
+    @test_util.broken_on_windows
     def test_update_registration_unsafely(self):
         # This test will become obsolete when register --update-registration
         # supports removing an e-mail address from the account
@@ -1459,6 +1515,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                 "--register-unsafely-without-email".split())
             self.assertTrue("--register-unsafely-without-email" in x[0])
 
+    @test_util.broken_on_windows
     @mock.patch('certbot.main.display_ops.get_email')
     @test_util.patch_get_utility()
     def test_update_registration_with_email(self, mock_utility, mock_email):
