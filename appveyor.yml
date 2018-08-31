@@ -6,8 +6,26 @@ branches:
     - /^\d+\.\d+\.x$/ # version branches like X.X.X
     - /^test-.*$/
 
+environment:
+  matrix:
+    - PYTHON: "C:\\Python34"
+    - PYTHON: "C:\\Python35"
+    - PYTHON: "C:\\Python37"
+
 install:
-  - pip install tox
+  # Fail fast if a newer build is queued for the same PR
+  - ps: if ($env:APPVEYOR_PULL_REQUEST_NUMBER -and $env:APPVEYOR_BUILD_NUMBER -ne ((Invoke-RestMethod `
+        https://ci.appveyor.com/api/projects/$env:APPVEYOR_ACCOUNT_NAME/$env:APPVEYOR_PROJECT_SLUG/history?recordsNumber=50).builds | `
+        Where-Object pullRequestId -eq $env:APPVEYOR_PULL_REQUEST_NUMBER)[0].buildNumber) { `
+          throw "There are newer queued builds for this pull request, failing early." }
+  # Add current python executable to PATH
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+  # Check env
+  - "python --version"
+  # Upgrade pip to avoid warnings
+  - "python -m pip install --upgrade pip"
+  # Ready to install tox
+  - "pip install tox"
 
 build: off
 
