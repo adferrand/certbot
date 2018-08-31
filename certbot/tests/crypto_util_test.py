@@ -379,7 +379,6 @@ class NotAfterTest(unittest.TestCase):
 
 class Sha256sumTest(unittest.TestCase):
     """Tests for certbot.crypto_util.notAfter"""
-    @test_util.broken_on_windows
     def test_sha256sum(self):
         from certbot.crypto_util import sha256sum
         self.assertEqual(sha256sum(CERT_PATH),

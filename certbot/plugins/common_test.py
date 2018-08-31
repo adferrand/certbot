@@ -184,7 +184,6 @@ class InstallerTest(test_util.ConfigTestCase):
         from certbot.constants import SSL_DHPARAMS_SRC
         return crypto_util.sha256sum(SSL_DHPARAMS_SRC)
 
-    @test_util.broken_on_windows
     def test_current_file_hash_in_all_hashes(self):
         from certbot.constants import ALL_SSL_DHPARAMS_HASHES
         self.assertTrue(self._current_ssl_dhparams_hash() in ALL_SSL_DHPARAMS_HASHES,
