@@ -131,7 +131,6 @@ class ImportCSRFileTest(unittest.TestCase):
         from certbot.crypto_util import import_csr_file
         return import_csr_file(*args, **kwargs)
 
-    @test_util.broken_on_windows
     def test_der_csr(self):
         csrfile = test_util.vector_path('csr_512.der')
         data = test_util.load_vector('csr_512.der')
@@ -142,10 +141,9 @@ class ImportCSRFileTest(unittest.TestCase):
              util.CSR(file=csrfile,
                       data=data_pem,
                       form="pem"),
-             ["Example.com"],),
+             ["Example.com"]),
             self._call(csrfile, data))
 
-    @test_util.broken_on_windows
     def test_pem_csr(self):
         csrfile = test_util.vector_path('csr_512.pem')
         data = test_util.load_vector('csr_512.pem')

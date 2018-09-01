@@ -38,8 +38,15 @@ def vector_path(*names):
 def load_vector(*names):
     """Load contents of a test vector."""
     # luckily, resource_string opens file in binary mode
-    return pkg_resources.resource_string(
+    data = pkg_resources.resource_string(
         __name__, os.path.join('testdata', *names))
+    # Try at most to convert CRLF to LF when data is text
+    try:
+        return data.decode().replace('\r\n', '\n').encode()
+    except ValueError:
+        # Failed to process the file with standard encoding.
+        # Most likely not a text file, return its bytes untouched.
+        return data
 
 
 def _guess_loader(filename, loader_pem, loader_der):
