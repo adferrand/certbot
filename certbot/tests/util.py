@@ -11,6 +11,7 @@ import tempfile
 import unittest
 import pytest
 import sys
+import warnings
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -326,7 +327,17 @@ class TempDirTestCase(unittest.TestCase):
         self.tempdir = tempfile.mkdtemp()
 
     def tearDown(self):
-        shutil.rmtree(self.tempdir)
+        # Release all locks immediately, as they should be normally be released at the end of
+        # py.test execution, but we will delete them with shutil.rmtree, and Windows to not support
+        # to delete a file before it is released.
+        getattr(util, '_release_locks')()
+        def onerror_handler(function, path, excinfo):
+            message = ('Following error occurred when deleting the tempdir {0}'
+                       ' for path {1} during tearDown process: {2}'
+                       .format(self.tempdir, path, str(excinfo)))
+            warnings.warn(message)
+        # Even with that 
+        shutil.rmtree(self.tempdir, onerror=onerror_handler)
 
 class ConfigTestCase(TempDirTestCase):
     """Test class which sets up a NamespaceConfig object.
