@@ -305,7 +305,6 @@ class TLSSNI01Test(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tempdir)
 
-    @test_util.broken_on_windows
     def test_setup_challenge_cert(self):
         # This is a helper function that can be used for handling
         # open context managers more elegantly. It avoids dealing with

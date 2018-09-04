@@ -17,6 +17,7 @@ import six
 from acme import challenges
 
 from certbot import achallenges
+from certbot import compat
 from certbot import errors
 from certbot.display import util as display_util
 
@@ -142,7 +143,7 @@ class AuthenticatorTest(unittest.TestCase):
             self.assertRaises(errors.PluginError, self.auth.perform, [])
         os.chmod(self.path, 0o700)
 
-    @test_util.broken_on_windows
+    @test_util.skip_on_windows('On Windows, there is no chown.')
     @mock.patch("certbot.plugins.webroot.os.chown")
     def test_failed_chown(self, mock_chown):
         mock_chown.side_effect = OSError(errno.EACCES, "msg")
@@ -164,23 +165,20 @@ class AuthenticatorTest(unittest.TestCase):
             self.auth.perform([achall])
         self.assertEqual(self.config.webroot_map[achall.domain], new_webroot)
 
-    @test_util.broken_on_windows
     def test_perform_permissions(self):
         self.auth.prepare()
 
         # Remove exec bit from permission check, so that it
         # matches the file
         self.auth.perform([self.achall])
-        path_permissions = stat.S_IMODE(os.stat(self.validation_path).st_mode)
-        self.assertEqual(path_permissions, 0o644)
+        self.assertTrue(compat.compare_file_modes(os.stat(self.validation_path).st_mode, 0o644))
 
         # Check permissions of the directories
 
         for dirpath, dirnames, _ in os.walk(self.path):
             for directory in dirnames:
                 full_path = os.path.join(dirpath, directory)
-                dir_permissions = stat.S_IMODE(os.stat(full_path).st_mode)
-                self.assertEqual(dir_permissions, 0o755)
+                self.assertTrue(compat.compare_file_modes(os.stat(full_path).st_mode, 0o755))
 
         parent_gid = os.stat(self.path).st_gid
         parent_uid = os.stat(self.path).st_uid
@@ -274,10 +272,9 @@ class WebrootActionTest(unittest.TestCase):
                                  action="append", default=[])
         Authenticator.inject_parser_options(self.parser, "webroot")
 
-    @test_util.broken_on_windows
     def test_webroot_map_action(self):
         args = self.parser.parse_args(
-            ["--webroot-map", '{{"thing.com":"{0}"}}'.format(self.path)])
+            ["--webroot-map", '{{"thing.com":"{0}"}}'.format(self.path).replace('\\', '\\\\')])
         self.assertEqual(args.webroot_map["thing.com"], self.path)
 
     def test_domain_before_webroot(self):

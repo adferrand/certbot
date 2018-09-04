@@ -58,7 +58,6 @@ class CompleterTest(test_util.TempDirTestCase):
 
         sys.modules['readline'] = original_readline
 
-    @test_util.broken_on_windows
     def test_context_manager_with_unmocked_readline(self):
         from certbot.display import completer
         reload_module(completer)
@@ -72,13 +71,11 @@ class CompleterTest(test_util.TempDirTestCase):
         self.assertEqual(readline.get_completer(), original_completer)
         self.assertEqual(readline.get_completer_delims(), original_delims)
 
-    @test_util.broken_on_windows
     @mock.patch('certbot.display.completer.readline', autospec=True)
     def test_context_manager_libedit(self, mock_readline):
         mock_readline.__doc__ = 'libedit'
         self._test_context_manager_with_mock_readline(mock_readline)
 
-    @test_util.broken_on_windows
     @mock.patch('certbot.display.completer.readline', autospec=True)
     def test_context_manager_readline(self, mock_readline):
         mock_readline.__doc__ = 'GNU readline'
@@ -97,7 +94,7 @@ class CompleterTest(test_util.TempDirTestCase):
 
 def enable_tab_completion(unused_command):
     """Enables readline tab completion using the system specific syntax."""
-    libedit = 'libedit' in readline.__doc__
+    libedit = readline.__doc__ is not None and 'libedit' in readline.__doc__
     command = 'bind ^I rl_complete' if libedit else 'tab: complete'
     readline.parse_and_bind(command)
 

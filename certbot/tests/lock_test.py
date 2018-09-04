@@ -52,7 +52,6 @@ class LockFileTest(test_util.TempDirTestCase):
             self.assertRaises, errors.LockError, self._call, self.lock_path)
         test_util.lock_and_call(assert_raises, self.lock_path)
 
-    @test_util.broken_on_windows
     def test_locked_repr(self):
         lock_file = self._call(self.lock_path)
         locked_repr = repr(lock_file)

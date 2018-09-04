@@ -203,7 +203,6 @@ class CertificatesTest(BaseCertManagerTest):
         self.assertTrue(mock_utility.called)
         shutil.rmtree(empty_tempdir)
 
-    @test_util.broken_on_windows
     @mock.patch('certbot.cert_manager.ocsp.RevocationChecker.ocsp_revoked')
     def test_report_human_readable(self, mock_revoked):
         mock_revoked.return_value = None

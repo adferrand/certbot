@@ -44,7 +44,6 @@ class InitSaveKeyTest(test_util.TempDirTestCase):
         from certbot.crypto_util import init_save_key
         return init_save_key(key_size, key_dir, 'key-certbot.pem')
 
-    @test_util.broken_on_windows
     @mock.patch('certbot.crypto_util.make_key')
     def test_success(self, mock_make):
         mock_make.return_value = b'key_pem'
@@ -386,7 +385,6 @@ class Sha256sumTest(unittest.TestCase):
 class CertAndChainFromFullchainTest(unittest.TestCase):
     """Tests for certbot.crypto_util.cert_and_chain_from_fullchain"""
 
-    @test_util.broken_on_windows
     def test_cert_and_chain_from_fullchain(self):
         cert_pem = CERT.decode()
         chain_pem = cert_pem + SS_CERT.decode()

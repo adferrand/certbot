@@ -185,7 +185,6 @@ class ReverterCheckpointLocalTest(test_util.ConfigTestCase):
 
         self.assertEqual(mock_run.call_count, 2)
 
-    @test_util.broken_on_windows
     def test_recovery_routine_in_progress_failure(self):
         self.reverter.add_to_checkpoint(self.sets[0], "perm save")
 
