@@ -327,10 +327,6 @@ class TempDirTestCase(unittest.TestCase):
         self.tempdir = tempfile.mkdtemp()
 
     def tearDown(self):
-        # Release all locks immediately, as they should be normally be released at the end of
-        # py.test execution, but we will delete them with shutil.rmtree, and Windows do not support
-        # to delete a file before it is released.
-        getattr(util, '_release_locks')()
         # Then we have various files which are not correctly closed at the time of tearDown.
         # On Windows, it is visible for the same reasons as above.
         # For know, we log them until a proper file close handling is written.
