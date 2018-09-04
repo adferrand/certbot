@@ -409,3 +409,10 @@ def broken_on_windows(function):
         sys.platform == 'win32'
         and os.environ.get('SKIP_BROKEN_TESTS_ON_WINDOWS', 'true') == 'true',
         reason = reason)(function)
+
+def temp_join(path):
+    """
+    Return the given path joined to the tempdir path for the current plateform
+    Eg.: 'cert' => /tmp/cert (Linux) or 'C:\\Users\\currentuser\\AppData\\Temp\\cert' (Windows)
+    """
+    return  os.path.join(tempfile.gettempdir(), path)
