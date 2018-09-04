@@ -131,7 +131,6 @@ class AccountFileStorageTest(test_util.ConfigTestCase):
         loaded = self.storage.load(self.acc.id)
         self.assertEqual(self.acc, loaded)
 
-    @test_util.broken_on_windows
     def test_save_and_restore_old_version(self):
         """Saved regr should include a new_authzr_uri for older Certbots"""
         self.storage.save(self.acc, self.mock_client)
@@ -150,7 +149,6 @@ class AccountFileStorageTest(test_util.ConfigTestCase):
             self.assertFalse(os.path.exists(
                 os.path.join(account_path, file_name)))
 
-    @test_util.broken_on_windows
     def test_find_all(self):
         self.storage.save(self.acc, self.mock_client)
         self.assertEqual([self.acc], self.storage.find_all())
@@ -173,7 +171,6 @@ class AccountFileStorageTest(test_util.ConfigTestCase):
     def test_load_non_existent_raises_error(self):
         self.assertRaises(errors.AccountNotFound, self.storage.load, "missing")
 
-    @test_util.broken_on_windows
     def test_load_id_mismatch_raises_error(self):
         self.storage.save(self.acc, self.mock_client)
         shutil.move(os.path.join(self.config.accounts_dir, self.acc.id),
@@ -192,7 +189,6 @@ class AccountFileStorageTest(test_util.ConfigTestCase):
         self.assertEqual([], self.storage.find_all())
         self.assertFalse(os.path.islink(self.config.accounts_dir))
 
-    @test_util.broken_on_windows
     def test_find_all_find_before_save(self):
         self._set_server('https://acme-staging-v02.api.letsencrypt.org/directory')
         self.assertEqual([], self.storage.find_all())
@@ -204,7 +200,6 @@ class AccountFileStorageTest(test_util.ConfigTestCase):
         prev_server_path = 'https://acme-staging.api.letsencrypt.org/directory'
         self.assertFalse(os.path.isdir(self.config.accounts_dir_for_server_path(prev_server_path)))
 
-    @test_util.broken_on_windows
     def test_find_all_save_before_find(self):
         self._set_server('https://acme-staging-v02.api.letsencrypt.org/directory')
         self.storage.save(self.acc, self.mock_client)
@@ -215,7 +210,6 @@ class AccountFileStorageTest(test_util.ConfigTestCase):
         prev_server_path = 'https://acme-staging.api.letsencrypt.org/directory'
         self.assertFalse(os.path.isdir(self.config.accounts_dir_for_server_path(prev_server_path)))
 
-    @test_util.broken_on_windows
     def test_find_all_server_downgrade(self):
         # don't use v2 accounts with a v1 url
         self._set_server('https://acme-staging-v02.api.letsencrypt.org/directory')
@@ -239,7 +233,6 @@ class AccountFileStorageTest(test_util.ConfigTestCase):
         self._set_server('https://acme-v02.api.letsencrypt.org/directory')
         self.assertEqual([self.acc], self.storage.find_all())
 
-    @test_util.broken_on_windows
     @mock.patch('os.rmdir')
     def test_corrupted_account(self, mock_rmdir):
         # pylint: disable=protected-access
@@ -269,7 +262,6 @@ class AccountFileStorageTest(test_util.ConfigTestCase):
         account = self.storage.load(self.acc.id)
         self.assertEqual(prev_account, account)
 
-    @test_util.broken_on_windows
     def test_load_ioerror(self):
         self.storage.save(self.acc, self.mock_client)
         mock_open = mock.mock_open()
