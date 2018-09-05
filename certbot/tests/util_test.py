@@ -140,7 +140,7 @@ class MakeOrVerifyDirTest(test_util.TempDirTestCase):
         super(MakeOrVerifyDirTest, self).setUp()
 
         self.path = os.path.join(self.tempdir, "foo")
-        os.mkdir(self.path, 0o400)
+        os.mkdir(self.path, 0o600)
 
         self.uid = compat.os_geteuid()
 
@@ -160,7 +160,7 @@ class MakeOrVerifyDirTest(test_util.TempDirTestCase):
 
     @test_util.skip_on_windows('Umask modes are mostly ignored on Windows.')
     def test_existing_wrong_mode_fails(self):
-        self.assertRaises(errors.Error, self._call, self.path, 0o600)
+        self.assertRaises(errors.Error, self._call, self.path, 0o400)
 
     def test_reraises_os_error(self):
         with mock.patch.object(os, "makedirs") as makedirs:
