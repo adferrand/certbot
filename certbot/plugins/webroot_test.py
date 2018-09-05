@@ -6,7 +6,6 @@ import argparse
 import errno
 import os
 import shutil
-import stat
 import tempfile
 import unittest
 

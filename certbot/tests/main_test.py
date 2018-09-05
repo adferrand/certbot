@@ -805,7 +805,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         #    ret, _, _, _ = self._call(args)
         #    self.assertTrue("Too many flags setting" in ret)
 
-        args = ["install", "--nginx", "--cert-path", 
+        args = ["install", "--nginx", "--cert-path",
                 test_util.temp_join('blah'), "--key-path", test_util.temp_join('blah'),
                 "--nginx-server-root", "/nonexistent/thing", "-d",
                 "example.com", "--debug"]
@@ -1112,7 +1112,8 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
                     # The location of the previous live privkey.pem is passed
                     # to obtain_certificate
                     mock_client.obtain_certificate.assert_called_once_with(['isnot.org'],
-                        os.path.normpath(os.path.join(self.config.config_dir, "live/sample-renewal/privkey.pem")))
+                        os.path.normpath(os.path.join(
+                            self.config.config_dir, "live/sample-renewal/privkey.pem")))
                 else:
                     mock_client.obtain_certificate.assert_called_once_with(['isnot.org'], None)
             else:
@@ -1305,7 +1306,8 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         self._test_renew_common(
             renewalparams=renewalparams, assert_oc_called=True,
             args=['renew', '--webroot-map', 
-                  '{{"example.com": "{0}"}}'.format(tempfile.gettempdir()).replace('\\', '\\\\')])
+                  '{{"example.com": "{0}"}}'.format(
+                      tempfile.gettempdir()).replace('\\', '\\\\')])
 
     def test_renew_reconstitute_error(self):
         # pylint: disable=protected-access
@@ -1335,7 +1337,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
     def test_no_renewal_with_hooks(self):
         _, _, stdout = self._test_renewal_common(
             due_for_renewal=False, extra_args=None, should_renew=False,
-            args=['renew', '--post-hook', 
+            args=['renew', '--post-hook',
                   '{0} -c "from __future__ import print_function; print(\'hello world\');"'
                   .format(sys.executable)])
         self.assertTrue('No hooks were run.' in stdout.getvalue())
@@ -1357,13 +1359,19 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         chain = 'chain'
         mock_client = mock.MagicMock()
         mock_client.obtain_certificate_from_csr.return_value = (certr, chain)
-        cert_path = os.path.normpath(os.path.join(self.config.config_dir , 'live/example.com/cert_512.pem'))
-        full_path = os.path.normpath(os.path.join(self.config.config_dir , 'live/example.com/fullchain.pem'))
+        cert_path = os.path.normpath(os.path.join(
+            self.config.config_dir, 
+            'live/example.com/cert_512.pem'))
+        full_path = os.path.normpath(os.path.join(
+            self.config.config_dir, 
+            'live/example.com/fullchain.pem'))
         mock_client.save_certificate.return_value = cert_path, None, full_path
         with mock.patch('certbot.main._init_le_client') as mock_init:
             mock_init.return_value = mock_client
             with test_util.patch_get_utility() as mock_get_utility:
-                chain_path = os.path.normpath(os.path.join(self.config.config_dir , 'live/example.com/chain.pem'))
+                chain_path = os.path.normpath(os.path.join(
+                    self.config.config_dir , 
+                    'live/example.com/chain.pem'))
                 args = ('-a standalone certonly --csr {0} --cert-path {1} '
                         '--chain-path {2} --fullchain-path {3}').format(
                             CSR, cert_path, chain_path, full_path).split()

@@ -94,7 +94,6 @@ class LockFileTest(test_util.TempDirTestCase):
         lock_function_to_mock = None
         try:
             # Windows specific
-            import fcntl
             lock_function_to_mock = 'certbot.lock.compat.fcntl.lockf'
         except ImportError:
             # Linux specific

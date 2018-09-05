@@ -3,7 +3,6 @@ import argparse
 import errno
 import os
 import shutil
-import stat
 import unittest
 
 import mock

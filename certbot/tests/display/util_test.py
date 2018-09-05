@@ -10,7 +10,6 @@ import mock
 
 from certbot import errors
 from certbot import interfaces
-from certbot.tests import util as test_util
 from certbot.display import util as display_util
 
 

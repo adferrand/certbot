@@ -324,9 +324,11 @@ class TempDirTestCase(unittest.TestCase):
     """Base test class which sets up and tears down a temporary directory"""
 
     def setUp(self):
+        """Execute before test"""
         self.tempdir = tempfile.mkdtemp()
 
     def tearDown(self):
+        """Execute after test"""
         # Then we have various files which are not correctly closed at the time of tearDown.
         # On Windows, it is visible for the same reasons as above.
         # For know, we log them until a proper file close handling is written.
@@ -399,16 +401,18 @@ def hold_lock(cv, lock_path):  # pragma: no cover
     my_lock.release()
 
 def skip_on_windows(reason):
+    """Decorator to skip permanently a test on Windows. A reason is required."""
     def wrapper(function):
         return pytest.mark.skipif(sys.platform == 'win32', reason=reason)(function)
     return wrapper
 
 def broken_on_windows(function):
+    """Decorator to skip temporarily a broken test on Windows."""
     reason = 'Test is broken and ignored on windows but should be fixed.'
     return pytest.mark.skipif(
         sys.platform == 'win32'
         and os.environ.get('SKIP_BROKEN_TESTS_ON_WINDOWS', 'true') == 'true',
-        reason = reason)(function)
+        reason=reason)(function)
 
 def temp_join(path):
     """
