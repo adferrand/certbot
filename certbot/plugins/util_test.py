@@ -9,7 +9,7 @@ class GetPrefixTest(unittest.TestCase):
     def test_get_prefix(self):
         from certbot.plugins.util import get_prefixes
         self.assertEqual(
-            get_prefixes('/a/b/c'), 
+            get_prefixes('/a/b/c'),
             [os.path.normpath(path) for path in ['/a/b/c', '/a/b', '/a', '/']])
         self.assertEqual(get_prefixes('/'), [os.path.normpath('/')])
         self.assertEqual(get_prefixes('a'), ['a'])

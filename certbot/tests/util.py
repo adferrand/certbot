@@ -333,6 +333,7 @@ class TempDirTestCase(unittest.TestCase):
         # On Windows, it is visible for the same reasons as above.
         # For know, we log them until a proper file close handling is written.
         def onerror_handler(_, path, excinfo):
+            """On error handler"""
             message = ('Following error occurred when deleting the tempdir {0}'
                        ' for path {1} during tearDown process: {2}'
                        .format(self.tempdir, path, str(excinfo)))
@@ -403,6 +404,7 @@ def hold_lock(cv, lock_path):  # pragma: no cover
 def skip_on_windows(reason):
     """Decorator to skip permanently a test on Windows. A reason is required."""
     def wrapper(function):
+        """Wrapped version"""
         return pytest.mark.skipif(sys.platform == 'win32', reason=reason)(function)
     return wrapper
 

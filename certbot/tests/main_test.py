@@ -1305,7 +1305,7 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         renewalparams = {'authenticator': 'webroot'}
         self._test_renew_common(
             renewalparams=renewalparams, assert_oc_called=True,
-            args=['renew', '--webroot-map', 
+            args=['renew', '--webroot-map',
                   '{{"example.com": "{0}"}}'.format(
                       tempfile.gettempdir()).replace('\\', '\\\\')])
 
@@ -1360,17 +1360,17 @@ class MainTest(test_util.ConfigTestCase):  # pylint: disable=too-many-public-met
         mock_client = mock.MagicMock()
         mock_client.obtain_certificate_from_csr.return_value = (certr, chain)
         cert_path = os.path.normpath(os.path.join(
-            self.config.config_dir, 
+            self.config.config_dir,
             'live/example.com/cert_512.pem'))
         full_path = os.path.normpath(os.path.join(
-            self.config.config_dir, 
+            self.config.config_dir,
             'live/example.com/fullchain.pem'))
         mock_client.save_certificate.return_value = cert_path, None, full_path
         with mock.patch('certbot.main._init_le_client') as mock_init:
             mock_init.return_value = mock_client
             with test_util.patch_get_utility() as mock_get_utility:
                 chain_path = os.path.normpath(os.path.join(
-                    self.config.config_dir , 
+                    self.config.config_dir,
                     'live/example.com/chain.pem'))
                 args = ('-a standalone certonly --csr {0} --cert-path {1} '
                         '--chain-path {2} --fullchain-path {3}').format(

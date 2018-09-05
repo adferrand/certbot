@@ -97,6 +97,7 @@ class LockFileTest(test_util.TempDirTestCase):
             lock_function_to_mock = 'certbot.lock.compat.fcntl.lockf'
         except ImportError:
             # Linux specific
+            import fcntl # pylint: disable=unused-variable
             lock_function_to_mock = 'certbot.lock.compat.msvcrt.locking'
 
         with mock.patch(lock_function_to_mock) as mock_lockf:
