@@ -3,7 +3,8 @@ import os
 try:
     import readline # pylint: disable=import-error
 except ImportError:
-    import pyreadline as readline # pylint: disable=import-error
+    import pyreadline # pylint: disable=import-error
+    readline = pyreadline
 import string
 import sys
 import unittest

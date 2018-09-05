@@ -187,8 +187,6 @@ class CheckPermissionsTest(test_util.TempDirTestCase):
 
     def test_ok_mode(self):
         os.chmod(self.tempdir, 0o600)
-        import stat
-        print(oct(stat.S_IMODE(os.stat(self.tempdir).st_mode)))
         self.assertTrue(self._call(0o600))
 
     def test_wrong_mode(self):
