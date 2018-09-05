@@ -93,11 +93,11 @@ class LockFileTest(test_util.TempDirTestCase):
     def test_unexpected_lockf_err(self):
         lock_function_to_mock = None
         try:
-            # Windows specific
-            lock_function_to_mock = 'certbot.lock.compat.fcntl.lockf'
-        except ImportError:
             # Linux specific
             import fcntl # pylint: disable=unused-variable
+            lock_function_to_mock = 'certbot.lock.compat.fcntl.lockf'
+        except ImportError:
+            # Windows specific
             lock_function_to_mock = 'certbot.lock.compat.msvcrt.locking'
 
         with mock.patch(lock_function_to_mock) as mock_lockf:
