@@ -10,7 +10,6 @@ import mock
 
 from certbot import errors
 from certbot import interfaces
-
 from certbot.display import util as display_util
 
 
@@ -34,7 +33,7 @@ class InputWithTimeoutTest(unittest.TestCase):
     def test_input(self, prompt=None):
         expected = "foo bar"
         stdin = six.StringIO(expected + "\n")
-        with mock.patch("certbot.display.util.select.select") as mock_select:
+        with mock.patch("certbot.compat.select.select") as mock_select:
             mock_select.return_value = ([stdin], [], [],)
             self.assertEqual(self._call(prompt), expected)
 
@@ -321,11 +320,7 @@ class FileOutputDisplayTest(unittest.TestCase):
 
 
 class NoninteractiveDisplayTest(unittest.TestCase):
-    """Test non-interactive display.
-
-    These tests are pretty easy!
-
-    """
+    """Test non-interactive display. These tests are pretty easy!"""
     def setUp(self):
         super(NoninteractiveDisplayTest, self).setUp()
         self.mock_stdout = mock.MagicMock()
