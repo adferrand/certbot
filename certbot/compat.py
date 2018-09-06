@@ -25,7 +25,7 @@ except ImportError:
     import msvcrt # pylint: disable=import-error
 
 UNPRIVILEGED_SUBCOMMANDS_ALLOWED = [
-    'certificates', 'enhance', 'revoke', 'delete', 
+    'certificates', 'enhance', 'revoke', 'delete',
     'register', 'unregister', 'config_changes', 'plugins']
 def raise_for_non_administrative_windows_rights(subcommand):
     """
@@ -99,20 +99,14 @@ def release_locked_file(fd, path):
     except OSError as err:
         if err.errno in (errno.EACCES, errno.EPERM):
             # Windows specific
-            #
-            # On Windows we cannot remove a file before closing its file descriptor.
-            # So we close first, and be exposed to the concurrency problem
-            # described in Linux section.
-            os.close(fd)
-            os.remove(path)
+            # We will not be able to remove a file before closing it.
+            # To avoid race conditions described for Linux, we will not delete the lockfile,
+            # just close it to be reused on the next Certbot call.
+            pass
         else:
             raise
     finally:
-        try:
-            os.close(fd)
-        except OSError:
-            # File descriptor already closed
-            pass
+        os.close(fd)
 
 def compare_file_modes(mode1, mode2):
     """Return true if the two modes can be considered as equals for this plateform"""
