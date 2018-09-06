@@ -34,7 +34,7 @@ class TLSServerTest(unittest.TestCase):
         if socket.has_ipv6:
             from acme.standalone import TLSServer
             server = TLSServer(
-                ('localhost', 0), socketserver.BaseRequestHandler, bind_and_activate=True, ipv6=True)
+                ('::1', 0), socketserver.BaseRequestHandler, bind_and_activate=True, ipv6=True)
             server.server_close()  # pylint: disable=no-member
 
 
