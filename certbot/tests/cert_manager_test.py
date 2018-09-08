@@ -229,7 +229,7 @@ class CertificatesTest(BaseCertManagerTest):
         # pylint: disable=protected-access
         out = get_report()
         print(out) # pylint: disable=superfluous-parens
-        self.assertTrue('1 hour(s)' in out)
+        self.assertTrue('1 hour(s)' in out or '2 hour(s)' in out)
         self.assertTrue('VALID' in out and not 'INVALID' in out)
 
         cert.target_expiry += datetime.timedelta(days=1)
