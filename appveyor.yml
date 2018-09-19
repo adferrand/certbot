@@ -9,6 +9,7 @@ branches:
     - master
     - /^\d+\.\d+\.x$/ # Version branches like X.X.X
     - /^test-.*$/
+    - windows-ci # for test purpose
 
 install:
   # Fail fast if a newer build is queued for the same PR
