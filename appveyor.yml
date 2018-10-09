@@ -1,12 +1,36 @@
 # AppVeyor CI pipeline, executed on Windows Server 2016/2012 R2
+image:
+  # => Windows Server 2012 R2
+  - Visual Studio 2015
+  # => Windows Server 2016
+  - Visual Studio 2017
+
 branches:
   only:
     - master
-    - /^\d+\.\d+\.x$/ # version branches like X.X.X
+    - /^\d+\.\d+\.x$/ # Version branches like 0.28.x
+    - /^v\d+\.\d+\.\d+$/ # Version tags like v0.28.1
     - /^test-.*$/
 
 build: off
 
 test_script:
   - ps: Write-Host "Hello, world!"
-  
+
+# If deploy is needed, installer executable is constructed and published as artifact
+before_deploy:
+  - ps: .\windows-installer\construct.ps1
+  - ps: Get-ChildItem .\windows-installer\build\nsis\*.exe | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+
+# Deploy the installer to the relevant GitHub release
+deploy:
+  provider: GitHub
+  tag: $(APPVEYOR_REPO_TAG_NAME)
+  release: Certbot $(APPVEYOR_REPO_TAG_NAME)
+  description: Release of Certbot $(APPVEYOR_REPO_TAG_NAME)
+  auth_token: 
+    secure: wFtJuuyI4gizhyEAWbAFqkj2yivgcSKiMWIdfoPpHWhPktiU5C2I/bH8ZurcsDbn
+  artifact: /.*\.exe/
+  on:
+    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    APPVEYOR_REPO_TAG: true
