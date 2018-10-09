@@ -7,6 +7,13 @@ Certbot adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 * `revoke` accepts `--cert-name`, and doesn't accept both `--cert-name` and `--cert-path`.
+* Create a build process to generate a self-contained NSIS installer for Certbot on Windows.
+  Once installed, three things are provided: a Windows shortcut opens a CMD with the necessary
+  privileged rights and a prompt, the `certbot` CLI is exposed to the CMD PATH, and an
+  utility `certbot-scheduler` CLI is also exposed to manage a certbot certificate renewal
+  process in the Windows task scheduler.
+* Add a continuous delivery pipeline to publish the relevant Certbot Windows 
+  installer to GitHub when a new version of Certbot is realised.
 
 ### Changed
 
