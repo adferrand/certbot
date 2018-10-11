@@ -8,7 +8,7 @@ $wheels_path = "$build_path\wheels"
 
 Push-Location $repo_path; $certbot_version = py -c "import certbot; print(certbot.__version__)"; Pop-Location
 
-$certbot_packages = @("acme", "certbot")
+$certbot_packages = @("acme", "certbot", "windows-installer\certbot-windows-utils")
 $certbot_packages += Get-ChildItem "$repo_path\certbot-dns-*" | Where-Object { $_.PSIsContainer } | Foreach-Object { $_.Name }
 
 "### Copy assets ###"
@@ -38,6 +38,9 @@ local_wheels=wheels\*.whl
 
 [Command certbot]
 entry_point=certbot.main:main
+
+[Command certbot-autorenew]
+entry_point=certbot_windows_utils.renew_task:main
 " | Set-Content -Path $installer_cfg_path
 
 "### Prepare build environment ###"
