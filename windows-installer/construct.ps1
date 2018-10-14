@@ -55,7 +55,13 @@ Pop-Location
 
 Remove-Item -Recurse -Force -ErrorAction Ignore -Path $wheels_path
 New-Item $wheels_path -ItemType directory | Out-Null
-pip install wheel pynsist
+pip install wheel
+
+# This code block can be replaced with 'pip install pynsist' when a new pynsist version 
+# will be pushed to pypi that integrates the work refered in takluyver/pynsist#166.
+pip install flit
+git clone https://github.com/takluyver/pynsist.git --branch distlib-launchers "$venv_path\pynsist"
+Push-Location "$venv_path\pynsist"; flit install; Pop-Location
 
 "### Compile wheels ###"
 
