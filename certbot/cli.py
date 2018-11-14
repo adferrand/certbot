@@ -87,6 +87,7 @@ obtain, install, and renew certificates:
   %s
   --standalone      Run a standalone webserver for authentication
   %s
+  %s
   --webroot         Place files in a server's webroot folder for authentication
   --manual          Obtain certificates interactively, or using shell script hooks
 
@@ -115,7 +116,7 @@ More detailed help:
 
    all, automation, commands, paths, security, testing, or any of the
    subcommands or plugins (certonly, renew, install, register, nginx,
-   apache, standalone, webroot, etc.)
+   apache, iis, standalone, webroot, etc.)
 """
 
 
@@ -548,15 +549,20 @@ class HelpfulArgumentParser(object):
         if "nginx" in plugins:
             nginx_doc = "--nginx           Use the Nginx plugin for authentication & installation"
         else:
-            nginx_doc = "(the certbot nginx plugin is not installed)"
+            nginx_doc = "(the certbot Nginx plugin is not installed)"
         if "apache" in plugins:
             apache_doc = "--apache          Use the Apache plugin for authentication & installation"
         else:
-            apache_doc = "(the certbot apache plugin is not installed)"
+            apache_doc = "(the certbot Apache plugin is not installed)"
+        if "iis" in plugins:
+            iis_doc = "--iis           Use the IIS plugin for authentication & installation"
+        else:
+            iis_doc = "(the certbot IIS plugin is not installed)"
+
 
         usage = SHORT_USAGE
         if help_arg == True:
-            self.notify(usage + COMMAND_OVERVIEW % (apache_doc, nginx_doc) + HELP_USAGE)
+            self.notify(usage + COMMAND_OVERVIEW % (apache_doc, nginx_doc, iis_doc) + HELP_USAGE)
             sys.exit(0)
         elif help_arg in self.COMMANDS_TOPICS:
             self.notify(usage + self._list_subcommands())
@@ -564,7 +570,7 @@ class HelpfulArgumentParser(object):
         elif help_arg == "all":
             # if we're doing --help all, the OVERVIEW is part of the SHORT_USAGE at
             # the top; if we're doing --help someothertopic, it's OT so it's not
-            usage += COMMAND_OVERVIEW % (apache_doc, nginx_doc)
+            usage += COMMAND_OVERVIEW % (apache_doc, nginx_doc, iis_doc)
         else:
             custom = VERB_HELP_MAP.get(help_arg, {}).get("usage", None)
             usage = custom if custom else usage
@@ -1092,7 +1098,7 @@ def prepare_and_parse_args(plugins, args, detect_defaults=False):  # pylint: dis
         help=config_help("no_verify_ssl"),
         default=flag_default("no_verify_ssl"))
     helpful.add(
-        ["testing", "standalone", "apache", "nginx"], "--tls-sni-01-port", type=int,
+        ["testing", "standalone", "apache", "nginx", "iis"], "--tls-sni-01-port", type=int,
         default=flag_default("tls_sni_01_port"),
         help=config_help("tls_sni_01_port"))
     helpful.add(
@@ -1387,6 +1393,9 @@ def _plugins_parsing(helpful, plugins):
     helpful.add(["plugins", "certonly", "run", "install", "config_changes"],
                 "--nginx", action="store_true", default=flag_default("nginx"),
                 help="Obtain and install certificates using Nginx")
+    helpful.add(["plugins", "certonly", "run", "install", "config_changes"],
+                "--iis", action="store_true", default=flag_default("iis"),
+                help="Obtain and install certificates using IIS")
     helpful.add(["plugins", "certonly"], "--standalone", action="store_true",
                 default=flag_default("standalone"),
                 help='Obtain certificates using a "standalone" webserver.')

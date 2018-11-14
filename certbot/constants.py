@@ -96,6 +96,7 @@ CLI_DEFAULTS = dict(
     installer=None,
     apache=False,
     nginx=False,
+    iis=False,
     standalone=False,
     manual=False,
     webroot=False,

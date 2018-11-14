@@ -273,6 +273,9 @@ def cli_plugin_requests(config):  # pylint: disable=too-many-branches
     if config.apache:
         req_inst = set_configurator(req_inst, "apache")
         req_auth = set_configurator(req_auth, "apache")
+    if config.iis:
+        req_inst = set_configurator(req_inst, "iis")
+        req_auth = set_configurator(req_auth, "iis")
     if config.standalone:
         req_auth = set_configurator(req_auth, "standalone")
     if config.webroot:
