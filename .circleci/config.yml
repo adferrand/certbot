@@ -31,7 +31,7 @@ jobs:
   "python-2.7-oldest":
     <<: *shared
     docker:
-    - image: circleci/python:2.7
+    - image: circleci/python:2.7-wheezy
     environment:
       TOXENV: py27-{acme,apache,certbot,dns,nginx,postfix}-oldest
   "python-3.4-mypy":
