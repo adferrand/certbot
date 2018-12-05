@@ -2,6 +2,7 @@ version: 2
 
 dependencies: &install_dependencies
   command: |
+    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y --no-install-recommends libaugeas0 python-dev
     sudo pip install tox
   name: Install required runtime dependencies
 
