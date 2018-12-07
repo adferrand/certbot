@@ -13,7 +13,7 @@ import re
 import os
 
 
-REQUIREMENT_PATTERN = b'^([\w\-\[\],\.]+)((?:[=<>]{1,2}[\w\.]+(?:,|))+)$'
+REQUIREMENT_PATTERN = r'^([\w\-\[\],\.]+)((?:[=<>!~]{1,2}[^,]+(?:,|))+)$'
 
 
 def read_file(file_path):
