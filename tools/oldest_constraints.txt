@@ -12,7 +12,7 @@ ndg-httpsclient==0.3.2
 ply==3.4
 pyasn1==0.1.9
 pycparser==2.14
-pyOpenSSL==0.13.1
+pyOpenSSL>=0.13.1,<=0.14
 pyparsing==1.5.6
 pyRFC3339==1.0
 python-augeas==0.5.0

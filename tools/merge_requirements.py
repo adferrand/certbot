@@ -9,6 +9,12 @@ simple SomeProject==1.2.3 format is currently supported.
 from __future__ import print_function
 
 import sys
+import re
+import os
+
+
+REQUIREMENT_PATTERN = b'^([\w\-\[\],\.]+)((?:[=<>]{1,2}[\w\.]+(?:,|))+)$'
+
 
 def read_file(file_path):
     """Reads in a Python requirements file.
@@ -19,16 +25,22 @@ def read_file(file_path):
     :rtype: dict
 
     """
-    d = {}
-    with open(file_path) as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith('#'):
-                project, version = line.split('==')
-                if not version:
-                    raise ValueError("Unexpected syntax '{0}'".format(line))
-                d[project] = version
-    return d
+    with open(file_path) as file:
+        lines = file.readlines()
+
+    data = {}
+    for line in lines:
+        line = line.strip()
+        if line and not line.startswith('#'):
+            search = re.search(REQUIREMENT_PATTERN, line.strip())
+            if search:
+                project = search.group(1)
+                versions = search.group(2)
+                data[project] = versions
+            else:
+                raise ValueError("Unexpected syntax '{0}'".format(line.strip()))
+
+    return data
 
 
 def output_requirements(requirements):
@@ -37,8 +49,8 @@ def output_requirements(requirements):
     :param dict requirements: mapping from a project to its pinned version
 
     """
-    return '\n'.join('{0}=={1}'.format(k, v)
-          for k, v in sorted(requirements.items()))
+    return os.linesep.join('{0}{1}'.format(k, v)
+                           for k, v in sorted(requirements.items()))
 
 
 def main(*files):
@@ -50,10 +62,10 @@ def main(*files):
     :param tuple files: paths to requirements files
 
     """
-    d = {}
-    for f in files:
-        d.update(read_file(f))
-    return output_requirements(d)
+    data = {}
+    for file_path in files:
+        data.update(read_file(file_path))
+    return output_requirements(data)
 
 
 if __name__ == '__main__':
