@@ -126,7 +126,6 @@ services:
         ipv4_address: 10.30.50.3
 networks:
   acmenet:
-    driver: bridge
     ipam:
       config:
         - subnet: 10.30.50.0/24
