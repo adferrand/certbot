@@ -14,6 +14,14 @@ import json
 from certbot_integration_tests.utils import misc
 
 
+if os.name != 'nt':
+    PEBBLE_DOCKER_IMG = 'letsencrypt/pebble'
+    CHALLTESTSRV_DOCKER_IMG = 'letsencrypt/pebble-challtestsrv'
+else:
+    PEBBLE_DOCKER_IMG = 'adferrand/pebble:nanoserver-sac2016'
+    CHALLTESTSRV_DOCKER_IMG = 'adferrand/pebble-challtestsrv:nanoserver-sac2016'
+
+
 def setup_acme_server(acme_config, nodes):
     """
     This method will setup an ACME CA server and a HTTP reverse proxy instances, to allow parallel
@@ -101,7 +109,7 @@ def _prepare_acme_server(workspace, acme_type, acme_option, acme_xdist):
 version: '3'
 services:
   pebble:
-    image: letsencrypt/pebble
+    image: {pebble_image}
     command: pebble -config /test/config/pebble-config.json {strict} -dnsserver 10.30.50.3:8053
     ports:
       - 14000:14000
@@ -109,7 +117,7 @@ services:
       acmenet:
         ipv4_address: 10.30.50.2
   challtestsrv:
-    image: letsencrypt/pebble-challtestsrv
+    image: {challtestsrv_image}
     command: pebble-challtestsrv -defaultIPv6 "" -defaultIPv4 10.30.50.3
     ports:
       - 8055:8055
@@ -122,7 +130,8 @@ networks:
     ipam:
       config:
         - subnet: 10.30.50.0/24
-'''.format(strict='-strict' if acme_option == 'strict' else ''))
+'''.format(strict='-strict' if acme_option == 'strict' else '',
+           pebble_image=PEBBLE_DOCKER_IMG, challtestsrv_image=CHALLTESTSRV_DOCKER_IMG))
 
         _launch_command(['docker-compose', 'up', '--force-recreate', '-d'], cwd=instance_path)
 

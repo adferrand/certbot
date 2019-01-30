@@ -4,6 +4,9 @@ environment:
   matrix:
     - TOXENV: py35
     - TOXENV: py37-cover
+    - TOXENV: integration
+      ACME_SERVER: pebble-nonstrict
+      PYTEST_ADDOPTS: -n4
 
 branches:
   only:
@@ -13,13 +16,15 @@ branches:
 
 install:
   # Use Python 3.7 by default
-  - "SET PATH=C:\\Python37;C:\\Python37\\Scripts;%PATH%"
+  - SET PATH=C:\\Python37;C:\\Python37\\Scripts;%PATH%
   # Check env
-  - "python --version"
+  - python --version
   # Upgrade pip to avoid warnings
-  - "python -m pip install --upgrade pip"
+  - python -m pip install --upgrade pip
   # Ready to install tox and coverage
-  - "pip install tox codecov"
+  - pip install tox codecov
+  # Add necessary runtime dependencies
+  - choco install nginx /noService
 
 build: off
 
