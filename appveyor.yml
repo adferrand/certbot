@@ -25,6 +25,10 @@ install:
   - pip install tox codecov
   # Add necessary runtime dependencies
   - choco install nginx --params '"/noService"'
+  # Clean docker env
+  - ps: Stop-Service docker
+  - ps: Get-ContainerNetwork | Remove-ContainerNetwork
+  - ps: Start-Service docker
 
 build: off
 
