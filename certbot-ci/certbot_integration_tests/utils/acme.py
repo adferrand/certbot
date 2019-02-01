@@ -136,12 +136,12 @@ networks:
 version: '3'
 services:
   pebble:
-    image: letsencrypt/pebble:nanoserver-sac2016
+    image: adferrand/pebble:nanoserver-sac2016
     command: pebble -config /test/config/pebble-config.json {strict} -dnsserver docker.for.win.localhost:8053
     ports:
       - 14000:14000
   challtestsrv:
-    image: letsencrypt/pebble-challtestsrv:nanoserver-sac2016
+    image: adferrand/pebble-challtestsrv:nanoserver-sac2016
     command: pebble-challtestsrv
     ports:
       - 8053:8053
@@ -216,7 +216,6 @@ networks:
     external:
       name: nat
 '''
-        print(config)
 
         with open(join(instance_path, 'docker-compose.yml'), 'w') as file_h:
             file_h.write(config)
