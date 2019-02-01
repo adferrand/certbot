@@ -111,25 +111,15 @@ version: '3'
 services:
   pebble:
     image: letsencrypt/pebble
-    command: pebble -config /test/config/pebble-config.json {strict} -dnsserver 10.30.50.3:8053
+    command: pebble -config /test/config/pebble-config.json {strict} -dnsserver 172.17.0.1:8053
     ports:
       - 14000:14000
-    networks:
-      acmenet:
-        ipv4_address: 10.30.50.2
   challtestsrv:
     image: letsencrypt/pebble-challtestsrv
-    command: pebble-challtestsrv -defaultIPv6 "" -defaultIPv4 10.30.50.3
+    command: pebble-challtestsrv -defaultIPv6 "" -defaultIPv4 172.17.0.1
     ports:
+      - 8053:8053
       - 8055:8055
-    networks:
-      acmenet:
-        ipv4_address: 10.30.50.3
-networks:
-  acmenet:
-    ipam:
-      config:
-        - subnet: 10.30.50.0/24
 '''.format(strict='-strict' if acme_option == 'strict' else '')
             else:
                 config = '''\
@@ -137,7 +127,7 @@ version: '3'
 services:
   pebble:
     image: adferrand/pebble:nanoserver-sac2016
-    command: pebble -config /test/config/pebble-config.json {strict} -dnsserver docker.for.win.localhost:8053
+    command: pebble -config /test/config/pebble-config.json {strict} -dnsserver 172.17.0.1:8053
     ports:
       - 14000:14000
   challtestsrv:
@@ -164,7 +154,7 @@ networks:
         # Configure challtestsrv to answer any A record request with ip of the docker host.
         response = requests.post('http://localhost:{0}/set-default-ipv4'
                                  .format(acme_xdist['challtestsrv_port']),
-                                 '{{"ip":"{0}.1"}}'.format(acme_xdist['acme_subnet']))
+                                 json={"ip": "172.17.0.1"})
         response.raise_for_status()
 
         print('=> Finished {0} instance deployment.'.format(acme_type))
@@ -181,7 +171,6 @@ def _prepare_traefik_proxy(workspace, acme_xdist):
         os.mkdir(instance_path)
 
         if os.name != 'nt':
-            backend_host = '10.33.33.1'
             config = '''\
 version: '3'
 services:
@@ -191,17 +180,8 @@ services:
     ports:
       - 5002:80
       - 8056:8080
-    networks:
-      traefiknet:
-        ipv4_address: 10.33.33.2
-networks:
-  traefiknet:
-    ipam:
-      config:
-        - subnet: 10.33.33.0/24
 '''
         else:
-            backend_host = 'docker.for.win.localhost'
             config = '''\
 version: '3'
 services:
@@ -226,7 +206,7 @@ networks:
         config = {
             'backends': {
                 node: {
-                    'servers': {node: {'url': 'http://{0}:{1}'.format(backend_host, port)}}
+                    'servers': {node: {'url': 'http://172.17.0.1:{0}'.format(port)}}
                 } for node, port in acme_xdist['http_port'].items()
             },
             'frontends': {
