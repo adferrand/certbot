@@ -104,12 +104,13 @@ def _prepare_acme_server(workspace, acme_type, acme_option, acme_xdist):
         # This configure Pebble using precompiled containers.
         if acme_type == 'pebble':
             os.mkdir(instance_path)
-            with open(join(instance_path, 'docker-compose.yml'), 'w') as file_h:
-                file_h.write('''\
+
+            if os.name != 'nt':
+                config = '''\
 version: '3'
 services:
   pebble:
-    image: {pebble_image}
+    image: letsencrypt/pebble
     command: pebble -config /test/config/pebble-config.json {strict} -dnsserver 10.30.50.3:8053
     ports:
       - 14000:14000
@@ -117,7 +118,7 @@ services:
       acmenet:
         ipv4_address: 10.30.50.2
   challtestsrv:
-    image: {challtestsrv_image}
+    image: letsencrypt/pebble-challtestsrv
     command: pebble-challtestsrv -defaultIPv6 "" -defaultIPv4 10.30.50.3
     ports:
       - 8055:8055
@@ -129,8 +130,26 @@ networks:
     ipam:
       config:
         - subnet: 10.30.50.0/24
-'''.format(strict='-strict' if acme_option == 'strict' else '',
-           pebble_image=PEBBLE_DOCKER_IMG, challtestsrv_image=CHALLTESTSRV_DOCKER_IMG))
+'''.format(strict='-strict' if acme_option == 'strict' else '')
+            else:
+                config = '''\
+version: '3'
+services:
+  pebble:
+    image: letsencrypt/pebble:nanoserver-sac2016
+    command: pebble -config /test/config/pebble-config.json {strict} -dnsserver docker.for.win.localhost:8053
+    ports:
+      - 14000:14000
+  challtestsrv:
+    image: letsencrypt/pebble-challtestsrv:nanoserver-sac2016
+    command: pebble-challtestsrv
+    ports:
+      - 8053:8053
+      - 8055:8055
+'''.format(strict='-strict' if acme_option == 'strict' else '')
+
+            with open(join(instance_path, 'docker-compose.yml'), 'w') as file_h:
+                file_h.write(config)
 
         _launch_command(['docker-compose', 'up', '--force-recreate', '-d'], cwd=instance_path)
 
@@ -157,16 +176,17 @@ def _prepare_traefik_proxy(workspace, acme_xdist):
     try:
         os.mkdir(instance_path)
 
-        with open(join(instance_path, 'docker-compose.yml'), 'w') as file_h:
-            file_h.write('''\
+        if os.name != 'nt':
+            backend_host = '10.33.33.1'
+            config = '''\
 version: '3'
 services:
   traefik:
     image: traefik
     command: --api --rest
     ports:
-      - "5002:80"
-      - "8056:8080"
+      - 5002:80
+      - 8056:8080
     networks:
       traefiknet:
         ipv4_address: 10.33.33.2
@@ -175,7 +195,22 @@ networks:
     ipam:
       config:
         - subnet: 10.33.33.0/24
-''')
+'''
+        else:
+            backend_host = 'docker.for.win.localhost'
+            config = '''\
+version: '3'
+services:
+  traefik:
+    image: traefik
+    command: --api --rest
+    ports:
+      - 5002:80
+      - 8056:8080
+'''
+
+        with open(join(instance_path, 'docker-compose.yml'), 'w') as file_h:
+            file_h.write(config)
 
         _launch_command(['docker-compose', 'up', '--force-recreate', '-d'], cwd=instance_path)
 
@@ -183,7 +218,7 @@ networks:
         config = {
             'backends': {
                 node: {
-                    'servers': {node: {'url': 'http://10.33.33.1:{0}'.format(port)}}
+                    'servers': {node: {'url': 'http://{0}:{1}'.format(backend_host, port)}}
                 } for node, port in acme_xdist['http_port'].items()
             },
             'frontends': {
