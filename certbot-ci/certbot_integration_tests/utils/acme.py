@@ -146,6 +146,10 @@ services:
     ports:
       - 8053:8053
       - 8055:8055
+networks:
+  default:
+    external:
+      name: nat
 '''.format(strict='-strict' if acme_option == 'strict' else '')
 
             with open(join(instance_path, 'docker-compose.yml'), 'w') as file_h:
@@ -207,6 +211,10 @@ services:
     ports:
       - 5002:80
       - 8056:8080
+networks:
+  default:
+    external:
+      name: nat
 '''
         print(config)
 
