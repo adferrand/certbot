@@ -105,45 +105,29 @@ def _prepare_acme_server(workspace, acme_type, acme_option, acme_xdist):
         if acme_type == 'pebble':
             os.mkdir(instance_path)
 
-            if os.name != 'nt':
-                config = '''\
-version: '3'
-services:
-  pebble:
-    image: letsencrypt/pebble
-    command: pebble -config /test/config/pebble-config.json {strict} -dnsserver 172.17.0.1:8053
-    ports:
-      - 14000:14000
-  challtestsrv:
-    image: letsencrypt/pebble-challtestsrv
-    command: pebble-challtestsrv -defaultIPv6 "" -defaultIPv4 172.17.0.1
-    ports:
-      - 8053:8053
-      - 8055:8055
-'''.format(strict='-strict' if acme_option == 'strict' else '')
-            else:
-                config = '''\
-version: '3'
-services:
-  pebble:
-    image: adferrand/pebble:nanoserver-sac2016
-    command: pebble -config /test/config/pebble-config.json {strict} -dnsserver 172.17.0.1:8053
-    ports:
-      - 14000:14000
-  challtestsrv:
-    image: adferrand/pebble-challtestsrv:nanoserver-sac2016
-    command: pebble-challtestsrv
-    ports:
-      - 8053:8053
-      - 8055:8055
-networks:
-  default:
-    external:
-      name: nat
-'''.format(strict='-strict' if acme_option == 'strict' else '')
+            config = {
+                'version': '3',
+                'services': {
+                    'pebble': {
+                        'image': ('adferrand/pebble:nanoserver-sac2016'
+                                  if os.name == 'nt' else 'letsencrypt/pebble'),
+                        'command': ('pebble -config /test/config/pebble-config.json {0} -dnsserver 172.17.0.1:8053'
+                                    .format('-strict' if acme_option == 'strict' else '')),
+                        'ports': ['14000']
+                    },
+                    'challtestsrv': {
+                        'image': ('adferrand/pebble-challtestsrv:nanoserver-sac2016'
+                                  if os.name == 'nt' else 'letsencrypt/pebble-challtestsrv'),
+                        'command': 'pebble-challtestsrv',
+                        'ports': ['8053', '8055']
+                    }
+                }
+            }
+            if os.name == 'nt':
+                config.update({'networks': {'default': {'external': {'name': 'nat'}}}})
 
-            with open(join(instance_path, 'docker-compose.yml'), 'w') as file_h:
-                file_h.write(config)
+            with open(join(instance_path, 'docker-compose.json'), 'w') as file_h:
+                file_h.write(json.dumps(config))
 
         _launch_command(['docker-compose', 'up', '--force-recreate', '-d'], cwd=instance_path)
 
@@ -170,35 +154,19 @@ def _prepare_traefik_proxy(workspace, acme_xdist):
     try:
         os.mkdir(instance_path)
 
-        if os.name != 'nt':
-            config = '''\
-version: '3'
-services:
-  traefik:
-    image: traefik
-    command: --api --rest
-    ports:
-      - 5002:80
-      - 8056:8080
-'''
-        else:
-            config = '''\
-version: '3'
-services:
-  traefik:
-    image: traefik:nanoserver-sac2016
-    command: --api --rest
-    ports:
-      - 5002:80
-      - 8056:8080
-networks:
-  default:
-    external:
-      name: nat
-'''
+        config = {
+            'version': '3',
+            'traefik': {
+                'image': 'traefik:nanoserver-sac2016' if os.name == 'nt' else 'traefik',
+                'command': '--api --rest',
+                'ports': ['5002:80', '8056:8080']
+            }
+        }
+        if os.name == 'nt':
+            config.update({'networks': {'default': {'external': {'name': 'nat'}}}})
 
-        with open(join(instance_path, 'docker-compose.yml'), 'w') as file_h:
-            file_h.write(config)
+        with open(join(instance_path, 'docker-compose.json'), 'w') as file_h:
+            file_h.write(json.dumps(config))
 
         _launch_command(['docker-compose', 'up', '--force-recreate', '-d'], cwd=instance_path)
 
