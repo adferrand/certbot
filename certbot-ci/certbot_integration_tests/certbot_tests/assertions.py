@@ -1,5 +1,9 @@
 import os
-import grp
+
+try:
+    import grp
+except ImportError:
+    grp = None
 
 
 __all__ = ['assert_hook_execution', 'assert_save_renew_hook', 'assert_certs_count_for_lineage',
@@ -33,10 +37,12 @@ def assert_equals_permissions(file1, file2, mask):
 
 
 def assert_equals_group_owner(file1, file2):
-    group_owner_file1 = grp.getgrgid(os.stat(file1).st_gid)[0]
-    group_owner_file2 = grp.getgrgid(os.stat(file2).st_gid)[0]
+    # TODO: Switch to certbot.compat.security to check the security stuff both on Linux and Windows
+    if grp:
+        group_owner_file1 = grp.getgrgid(os.stat(file1).st_gid)[0]
+        group_owner_file2 = grp.getgrgid(os.stat(file2).st_gid)[0]
 
-    assert group_owner_file1 == group_owner_file2
+        assert group_owner_file1 == group_owner_file2
 
 
 def assert_world_permissions(file, mode):

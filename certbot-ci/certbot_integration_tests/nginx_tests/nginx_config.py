@@ -1,5 +1,4 @@
 """General test purpose nginx configuration generator."""
-import getpass
 
 
 def construct_nginx_config(nginx_root, nginx_webroot, http_port, https_port,
@@ -25,8 +24,6 @@ error_log {nginx_root}/error.log;
 
 # The pidfile will be written to /var/run unless this is set.
 pid {nginx_root}/nginx.pid;
-
-user {user};
 
 worker_processes 1;
 
@@ -109,11 +106,10 @@ http {{
     server_name nginx6.{wtf_prefix}.wtf nginx7.{wtf_prefix}.wtf;
   }}
 }}
-        '''.format(nginx_root=nginx_root,
-                   nginx_webroot=nginx_webroot,
-                   user=getpass.getuser(),
-                   http_port=http_port,
-                   https_port=https_port,
-                   other_port=other_port,
-                   default_server=default_server,
-                   wtf_prefix=wtf_prefix)
+'''.format(nginx_root=nginx_root,
+           nginx_webroot=nginx_webroot,
+           http_port=http_port,
+           https_port=https_port,
+           other_port=other_port,
+           default_server=default_server,
+           wtf_prefix=wtf_prefix)
