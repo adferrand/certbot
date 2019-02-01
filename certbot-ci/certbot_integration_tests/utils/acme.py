@@ -208,6 +208,7 @@ services:
       - 5002:80
       - 8056:8080
 '''
+        print(config)
 
         with open(join(instance_path, 'docker-compose.yml'), 'w') as file_h:
             file_h.write(config)
