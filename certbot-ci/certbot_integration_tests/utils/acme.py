@@ -206,7 +206,7 @@ networks:
 version: '3'
 services:
   traefik:
-    image: traefik
+    image: traefik:nanoserver-sac2016
     command: --api --rest
     ports:
       - 5002:80
