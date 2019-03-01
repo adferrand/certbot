@@ -1,5 +1,11 @@
 image: Visual Studio 2015
 
+init:
+  - ps: |
+      Write-Host $Env:APPVEYOR_PULL_REQUEST_NUMBER
+      if (-Not $Env:APPVEYOR_PULL_REQUEST_NUMBER -And $Env:APPVEYOR_REPO_BRANCH -Eq 'master')
+      { $Env:APPVEYOR_SKIP_FINALIZE_ON_EXIT = 'true'; Exit-AppVeyorBuild }
+
 environment:
   matrix:
     - TOXENV: py35
