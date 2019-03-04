@@ -497,6 +497,26 @@ CallPipstrap() {
 UNLIKELY_EOF
 }
 
+# Define pinned requirements for Certbot
+LETSENCRYPT_AUTO_REQUIREMENTS=$(cat << "UNLIKELY_EOF"
+{{ dependency-requirements.txt }}
+{{ letsencrypt-requirements.txt }}
+{{ certbot-requirements.txt }}
+UNLIKELY_EOF
+)
+
+# 1 - Find latest letsencrypt-auto version and print it to stdout.
+#     Parameters: LE_PYTHON, --latest-version
+# 2 - Fetch a given version of letsencrypt-auto script.
+#     Parameters: LE_PYTHON, --le-auto-script, LETSENCRYPT_AUTO_REMOTE_VERSION
+FetchLetsencryptAuto() {
+    "$1" - "$2" "$3" << "UNLIKELY_EOF"
+{{ fetch.py }}
+UNLIKELY_EOF
+}
+
+FetchLetsencryptAuto python --latest-version
+
 if [ "$1" = "--le-auto-phase2" ]; then
   # Phase 2: Create venv, install LE, and run.
 
@@ -563,20 +583,12 @@ if [ "$1" = "--le-auto-phase2" ]; then
     say "Installing Python packages..."
     TEMP_DIR=$(TempDir)
     trap 'rm -rf "$TEMP_DIR"' EXIT
-    # There is no $ interpolation due to quotes on starting heredoc delimiter.
-    # -------------------------------------------------------------------------
-    cat << "UNLIKELY_EOF" > "$TEMP_DIR/letsencrypt-auto-requirements.txt"
-{{ dependency-requirements.txt }}
-{{ letsencrypt-requirements.txt }}
-{{ certbot-requirements.txt }}
-UNLIKELY_EOF
-    # -------------------------------------------------------------------------
     CallPipstrap "$VENV_BIN/python"
     set +e
     if [ "$VERBOSE" = 1 ]; then
-      "$VENV_BIN/pip" install --disable-pip-version-check --no-cache-dir --require-hashes -r "$TEMP_DIR/letsencrypt-auto-requirements.txt"
+      echo "$LETSENCRYPT_AUTO_REQUIREMENTS" | "$VENV_BIN/pip" install --disable-pip-version-check --no-cache-dir --require-hashes -r /dev/stdin
     else
-      PIP_OUT=`"$VENV_BIN/pip" install --disable-pip-version-check --no-cache-dir --require-hashes -r "$TEMP_DIR/letsencrypt-auto-requirements.txt" 2>&1`
+      PIP_OUT=`echo "$LETSENCRYPT_AUTO_REQUIREMENTS" | "$VENV_BIN/pip" install --disable-pip-version-check --no-cache-dir --require-hashes -r /dev/stdin 2>&1`
     fi
     PIP_STATUS=$?
     set -e
