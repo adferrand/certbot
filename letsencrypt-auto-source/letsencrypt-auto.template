@@ -488,6 +488,15 @@ CreateVenv() {
 UNLIKELY_EOF
 }
 
+# Execute pipstrap to setup pip, setuptools and wheel in the virtual environment.
+# Target venv is automatically resolved by providing the python executable of this venv.
+# Parameters: VENV_PYTHON
+CallPipstrap() {
+    "$1" - << "UNLIKELY_EOF"
+{{ pipstrap.py }}
+UNLIKELY_EOF
+}
+
 if [ "$1" = "--le-auto-phase2" ]; then
   # Phase 2: Create venv, install LE, and run.
 
@@ -562,12 +571,7 @@ if [ "$1" = "--le-auto-phase2" ]; then
 {{ certbot-requirements.txt }}
 UNLIKELY_EOF
     # -------------------------------------------------------------------------
-    cat << "UNLIKELY_EOF" > "$TEMP_DIR/pipstrap.py"
-{{ pipstrap.py }}
-UNLIKELY_EOF
-    # -------------------------------------------------------------------------
-    # Set PATH so pipstrap upgrades the right (v)env:
-    PATH="$VENV_BIN:$PATH" "$VENV_BIN/python" "$TEMP_DIR/pipstrap.py"
+    CallPipstrap "$VENV_BIN/python"
     set +e
     if [ "$VERBOSE" = 1 ]; then
       "$VENV_BIN/pip" install --disable-pip-version-check --no-cache-dir --require-hashes -r "$TEMP_DIR/letsencrypt-auto-requirements.txt"
