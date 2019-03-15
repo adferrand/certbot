@@ -35,12 +35,12 @@ class ReverterCheckpointLocalTest(test_util.ConfigTestCase):
 
         logging.disable(logging.NOTSET)
 
-    @mock.patch("certbot.reverter._read_json_file")
-    def test_no_change(self, mock_read):
-        mock_read.side_effect = OSError("cannot even")
+    @mock.patch("certbot.reverter.shutil.copy2")
+    def test_no_change(self, mock_copy):
+        mock_copy.side_effect = OSError("cannot even")
         try:
             self.reverter.add_to_checkpoint(self.sets[0], "save1")
-        except OSError:
+        except errors.ReverterError:
             pass
         self.reverter.finalize_checkpoint("blah")
         path = os.listdir(self.reverter.config.backup_dir)[0]
