@@ -6,6 +6,7 @@ from __future__ import absolute_import
 
 import select
 import sys
+import logging.handlers
 
 from certbot.compat import os
 
@@ -15,6 +16,19 @@ except ImportError:  # pragma: no cover
     shellwin32 = None  # type: ignore
 
 from certbot import errors
+
+
+class RotatingFileHandler(logging.handlers.RotatingFileHandler):
+    def __init__(self, *args, **kwargs):
+        super(RotatingFileHandler, self).__init__(*args, **kwargs)
+
+        if os.name == 'nt':
+            self.rotator = self._windows_rotator
+
+    def _windows_rotator(self, source, dest):
+        if os.path.exists(source):
+            # Certbot for Windows run exclusively on Python 3.x, so os.replace exists.
+            os.replace(source, dest)
 
 
 def raise_for_non_administrative_windows_rights():
