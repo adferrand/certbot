@@ -1343,16 +1343,15 @@ def main(cli_args=sys.argv[1:]):
         misc.raise_for_non_administrative_windows_rights()
 
         with log.post_arg_parse_setup(config) as log_error:
-
-            if (log_error
-                    and (not isinstance(log_error, errors.Error) or config.func != plugins_cmd)):
-                # Let plugins_cmd be run as un-privileged user.
+            # Let plugins_cmd be run as un-privileged user (log part)
+            if (log_error and (not isinstance(log_error, errors.Error)
+                               or config.func != plugins_cmd)):
                 raise log_error
 
             try:
                 make_or_verify_needed_dirs(config)
             except errors.Error:
-                # Let plugins_cmd be run as un-privileged user.
+                # Let plugins_cmd be run as un-privileged user (config part)
                 if config.func != plugins_cmd:
                     raise
 
