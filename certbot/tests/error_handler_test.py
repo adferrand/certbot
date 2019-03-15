@@ -33,7 +33,11 @@ def signal_receiver(signums):
 
 def send_signal(signum):
     """Send the given signal"""
-    os.kill(os.getpid(), signum)
+    if os.name != 'nt':
+        os.kill(os.getpid(), signum)
+    else:
+        assert signum in [signal.SIGINT, signal.SIGBREAK]
+        os.kill(os.getpid(), signal.CTRL_BREAK_EVENT)
 
 
 class ErrorHandlerTest(unittest.TestCase):
@@ -151,6 +155,7 @@ class ExitHandlerTest(ErrorHandlerTest):
     @test_util.broken_on_windows
     def test_bad_recovery_with_signal(self):
         super(ExitHandlerTest, self).test_bad_recovery_with_signal()
+
 
 if __name__ == "__main__":
     unittest.main()  # pragma: no cover
