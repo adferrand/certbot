@@ -175,9 +175,11 @@ class AccountFileStorage(interfaces.AccountStorage):
             except errors.AccountStorageError:
                 logger.debug("Account loading problem", exc_info=True)
 
-        if not accounts and server_path in constants.LE_REUSE_SERVERS:
+        le_reuse_server = {os.path.normpath(key): os.path.normpath(value)
+                           for key, value in constants.LE_REUSE_SERVERS.items()}
+        if not accounts and server_path in le_reuse_server:
             # find all for the next link down
-            prev_server_path = constants.LE_REUSE_SERVERS[server_path]
+            prev_server_path = le_reuse_server[server_path]
             prev_accounts = self._find_all_for_server_path(prev_server_path)
             # if we found something, link to that
             if prev_accounts:
@@ -207,9 +209,11 @@ class AccountFileStorage(interfaces.AccountStorage):
 
     def _load_for_server_path(self, account_id, server_path):
         account_dir_path = self._account_dir_path_for_server_path(account_id, server_path)
-        if not os.path.isdir(account_dir_path): # isdir is also true for symlinks
-            if server_path in constants.LE_REUSE_SERVERS:
-                prev_server_path = constants.LE_REUSE_SERVERS[server_path]
+        if not os.path.isdir(account_dir_path):  # isdir is also true for symlinks
+            le_reuse_server = {os.path.normpath(key): os.path.normpath(value)
+                               for key, value in constants.LE_REUSE_SERVERS.items()}
+            if server_path in le_reuse_server:
+                prev_server_path = le_reuse_server[server_path]
                 prev_loaded_account = self._load_for_server_path(account_id, prev_server_path)
                 # we didn't error so we found something, so create a symlink to that
                 accounts_dir = self.config.accounts_dir_for_server_path(server_path)
@@ -296,8 +300,10 @@ class AccountFileStorage(interfaces.AccountStorage):
 
         # does an appropriate directory link to me? if so, make sure that's gone
         reused_servers = {}
-        for k in constants.LE_REUSE_SERVERS:
-            reused_servers[constants.LE_REUSE_SERVERS[k]] = k
+        le_reuse_server = {os.path.normpath(key): os.path.normpath(value)
+                           for key, value in constants.LE_REUSE_SERVERS.items()}
+        for k in le_reuse_server:
+            reused_servers[le_reuse_server[k]] = k
 
         # is there a next one up?
         possible_next_link = True
