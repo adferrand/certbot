@@ -1,9 +1,9 @@
 """Test certbot.reverter."""
-import csv
 import logging
 import shutil
 import tempfile
 import unittest
+import json
 
 import mock
 import six
@@ -35,7 +35,7 @@ class ReverterCheckpointLocalTest(test_util.ConfigTestCase):
 
         logging.disable(logging.NOTSET)
 
-    @mock.patch("certbot.reverter.Reverter._read_and_append")
+    @mock.patch("certbot.reverter._read_json_file")
     def test_no_change(self, mock_read):
         mock_read.side_effect = OSError("cannot even")
         try:
@@ -49,7 +49,6 @@ class ReverterCheckpointLocalTest(test_util.ConfigTestCase):
             x = f.read()
         self.assertTrue("No changes" in x)
 
-    @test_util.broken_on_windows
     def test_basic_add_to_temp_checkpoint(self):
         # These shouldn't conflict even though they are both named config.txt
         self.reverter.add_to_temp_checkpoint(self.sets[0], "save1")
@@ -62,8 +61,7 @@ class ReverterCheckpointLocalTest(test_util.ConfigTestCase):
             os.path.join(self.config.temp_checkpoint_dir, "NEW_FILES")))
 
         self.assertEqual(
-            get_filepaths(self.config.temp_checkpoint_dir),
-            "{0}\n{1}\n".format(self.config1, self.config2))
+            get_filepaths(self.config.temp_checkpoint_dir), [self.config1, self.config2])
 
     def test_add_to_checkpoint_copy_failure(self):
         with mock.patch("certbot.reverter.shutil.copy2") as mock_copy2:
@@ -472,19 +470,18 @@ def get_save_notes(dire):
 
 
 def get_filepaths(dire):
-    """Get Filepaths"""
-    return read_in(os.path.join(dire, "FILEPATHS"))
+    """Get filepaths"""
+    return json.loads(read_in(os.path.join(dire, "FILEPATHS")))
 
 
 def get_new_files(dire):
     """Get new files."""
-    return read_in(os.path.join(dire, "NEW_FILES")).splitlines()
+    return json.loads(read_in(os.path.join(dire, "NEW_FILES")))
 
 
 def get_undo_commands(dire):
-    """Get new files."""
-    with open(os.path.join(dire, "COMMANDS")) as csvfile:
-        return list(csv.reader(csvfile))
+    """Get undo commands."""
+    return json.loads(read_in(os.path.join(dire, "COMMANDS")))
 
 
 def read_in(path):

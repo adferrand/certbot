@@ -1,10 +1,11 @@
 """Reverter class saves configuration checkpoints and allows for recovery."""
-import csv
 import glob
 import logging
 import shutil
 import time
 import traceback
+import json
+import errno
 
 import six
 import zope.component
@@ -165,17 +166,15 @@ class Reverter(object):
                 output.append(changes_fd.read())
 
             output.append("Affected files:")
-            with open(os.path.join(cur_dir, "FILEPATHS")) as paths_fd:
-                filepaths = paths_fd.read().splitlines()
-                for path in filepaths:
-                    output.append("  {0}".format(path))
+            filepaths = _read_json_file(os.path.join(cur_dir, "FILEPATHS"))
+            for path in filepaths:
+                output.append("  {0}".format(path))
 
-            if os.path.isfile(os.path.join(cur_dir, "NEW_FILES")):
-                with open(os.path.join(cur_dir, "NEW_FILES")) as new_fd:
-                    output.append("New Configuration Files:")
-                    filepaths = new_fd.read().splitlines()
-                    for path in filepaths:
-                        output.append("  {0}".format(path))
+            new_files = _read_json_file(os.path.join(cur_dir, "NEW_FILES"))
+            if new_files:
+                output.append("New Configuration Files:")
+                for path in new_files:
+                    output.append("  {0}".format(path))
 
             output.append(os.linesep)
 
@@ -221,52 +220,32 @@ class Reverter(object):
             cp_dir, constants.CONFIG_DIRS_MODE,
             self.config.strict_permissions)
 
-        op_fd, existing_filepaths = self._read_and_append(
-            os.path.join(cp_dir, "FILEPATHS"))
+        storage_path = os.path.join(cp_dir, "FILEPATHS")
+        existing_filepaths = _read_json_file(storage_path)
 
         idx = len(existing_filepaths)
 
-        for filename in save_files:
-            # No need to copy/index already existing files
-            # The oldest copy already exists in the directory...
-            if filename not in existing_filepaths:
-                # Tag files with index so multiple files can
-                # have the same filename
-                logger.debug("Creating backup of %s", filename)
-                try:
+        try:
+            for filename in save_files:
+                # No need to copy/index already existing files
+                # The oldest copy already exists in the directory...
+                if filename not in existing_filepaths:
+                    # Tag files with index so multiple files can
+                    # have the same filename
+                    logger.debug("Creating backup of %s", filename)
                     shutil.copy2(filename, os.path.join(
                         cp_dir, os.path.basename(filename) + "_" + str(idx)))
-                    op_fd.write(filename + os.linesep)
-                # http://stackoverflow.com/questions/4726260/effective-use-of-python-shutil-copy2
-                except IOError:
-                    op_fd.close()
-                    logger.error(
-                        "Unable to add file %s to checkpoint %s",
-                        filename, cp_dir)
-                    raise errors.ReverterError(
-                        "Unable to add file {0} to checkpoint "
-                        "{1}".format(filename, cp_dir))
-                idx += 1
-        op_fd.close()
+                    existing_filepaths.append(filename)
+                    # http://stackoverflow.com/questions/4726260/effective-use-of-python-shutil-copy2
+                    idx += 1
+            _write_json_file(storage_path, existing_filepaths)
+        except IOError:
+            message = "Unable to add files to checkpoint {0}".format(cp_dir)
+            logger.error(message)
+            raise errors.ReverterError(message)
 
         with open(os.path.join(cp_dir, "CHANGES_SINCE"), "a") as notes_fd:
             notes_fd.write(save_notes)
-
-    def _read_and_append(self, filepath):  # pylint: disable=no-self-use
-        """Reads the file lines and returns a file obj.
-
-        Read the file returning the lines, and a pointer to the end of the file.
-
-        """
-        # Open up filepath differently depending on if it already exists
-        if os.path.isfile(filepath):
-            op_fd = open(filepath, "r+")
-            lines = op_fd.read().splitlines()
-        else:
-            lines = []
-            op_fd = open(filepath, "w")
-
-        return op_fd, lines
 
     def _recover_checkpoint(self, cp_dir):
         """Recover a specific checkpoint.
@@ -280,22 +259,20 @@ class Reverter(object):
 
         """
         # Undo all commands
-        if os.path.isfile(os.path.join(cp_dir, "COMMANDS")):
-            self._run_undo_commands(os.path.join(cp_dir, "COMMANDS"))
+        self._run_undo_commands(os.path.join(cp_dir, "COMMANDS"))
+
         # Revert all changed files
-        if os.path.isfile(os.path.join(cp_dir, "FILEPATHS")):
-            try:
-                with open(os.path.join(cp_dir, "FILEPATHS")) as paths_fd:
-                    filepaths = paths_fd.read().splitlines()
-                    for idx, path in enumerate(filepaths):
-                        shutil.copy2(os.path.join(
-                            cp_dir,
-                            os.path.basename(path) + "_" + str(idx)), path)
-            except (IOError, OSError):
-                # This file is required in all checkpoints.
-                logger.error("Unable to recover files from %s", cp_dir)
-                raise errors.ReverterError(
-                    "Unable to recover files from %s" % cp_dir)
+        filepaths = os.path.join(cp_dir, "FILEPATHS")
+        try:
+            for idx, path in enumerate(_read_json_file(filepaths)):
+                shutil.copy2(os.path.join(
+                    cp_dir,
+                    os.path.basename(path) + "_" + str(idx)), path)
+        except (IOError, OSError):
+            # This file is required in all checkpoints.
+            logger.error("Unable to recover files from %s", cp_dir)
+            raise errors.ReverterError(
+                "Unable to recover files from %s" % cp_dir)
 
         # Remove any newly added files if they exist
         self._remove_contained_files(os.path.join(cp_dir, "NEW_FILES"))
@@ -307,18 +284,14 @@ class Reverter(object):
             raise errors.ReverterError(
                 "Unable to remove directory: %s" % cp_dir)
 
-    def _run_undo_commands(self, filepath):  # pylint: disable=no-self-use
-        """Run all commands in a file."""
-        # NOTE: csv module uses native strings. That is, bytes on Python 2 and
-        # unicode on Python 3
-        with open(filepath, 'r') as csvfile:
-            csvreader = csv.reader(csvfile)
-            for command in reversed(list(csvreader)):
-                try:
-                    util.run_script(command)
-                except errors.SubprocessError:
-                    logger.error(
-                        "Unable to run undo command: %s", " ".join(command))
+    def _run_undo_commands(self, commands_file):  # pylint: disable=no-self-use
+        """Run all given commands from the given commands file."""
+        for command in _read_json_file(commands_file):
+            try:
+                util.run_script(command)
+            except errors.SubprocessError:
+                logger.error(
+                    "Unable to run undo command: %s", " ".join(command))
 
     def _check_tempfile_saves(self, save_files):
         """Verify save isn't overwriting any temporary files.
@@ -333,15 +306,11 @@ class Reverter(object):
 
         # Get temp modified files
         temp_path = os.path.join(self.config.temp_checkpoint_dir, "FILEPATHS")
-        if os.path.isfile(temp_path):
-            with open(temp_path, "r") as protected_fd:
-                protected_files.extend(protected_fd.read().splitlines())
+        protected_files.extend(_read_json_file(temp_path))
 
         # Get temp new files
         new_path = os.path.join(self.config.temp_checkpoint_dir, "NEW_FILES")
-        if os.path.isfile(new_path):
-            with open(new_path, "r") as protected_fd:
-                protected_files.extend(protected_fd.read().splitlines())
+        protected_files.extend(_read_json_file(new_path))
 
         # Verify no save_file is in protected_files
         for filename in protected_files:
@@ -374,20 +343,17 @@ class Reverter(object):
         cp_dir = self._get_cp_dir(temporary)
 
         # Append all new files (that aren't already registered)
-        new_fd = None
+        storage_path = os.path.join(cp_dir, "NEW_FILES")
         try:
-            new_fd, ex_files = self._read_and_append(os.path.join(cp_dir, "NEW_FILES"))
-
+            ex_files = _read_json_file(storage_path)
             for path in files:
                 if path not in ex_files:
-                    new_fd.write("{0}{1}".format(path, os.linesep))
+                    ex_files.append(path)
+            _write_json_file(storage_path, ex_files)
         except (IOError, OSError):
             logger.error("Unable to register file creation(s) - %s", files)
             raise errors.ReverterError(
                 "Unable to register file creation(s) - {0}".format(files))
-        finally:
-            if new_fd is not None:
-                new_fd.close()
 
     def register_undo_command(self, temporary, command):
         """Register a command to be run to undo actions taken.
@@ -406,23 +372,14 @@ class Reverter(object):
 
         """
         commands_fp = os.path.join(self._get_cp_dir(temporary), "COMMANDS")
-        command_file = None
         try:
-            if os.path.isfile(commands_fp):
-                command_file = open(commands_fp, "a")
-            else:
-                command_file = open(commands_fp, "w")
-
-            csvwriter = csv.writer(command_file)
-            csvwriter.writerow(command)
-
+            commands = _read_json_file(commands_fp)
+            commands.append(command)
+            _write_json_file(commands_fp, commands)
         except (IOError, OSError):
             logger.error("Unable to register undo command")
             raise errors.ReverterError(
                 "Unable to register undo command.")
-        finally:
-            if command_file is not None:
-                command_file.close()
 
     def _get_cp_dir(self, temporary):
         """Return the proper reverter directory."""
@@ -482,18 +439,16 @@ class Reverter(object):
         if not os.path.isfile(file_list):
             return False
         try:
-            with open(file_list, "r") as list_fd:
-                filepaths = list_fd.read().splitlines()
-                for path in filepaths:
-                    # Files are registered before they are added... so
-                    # check to see if file exists first
-                    if os.path.lexists(path):
-                        os.remove(path)
-                    else:
-                        logger.warning(
-                            "File: %s - Could not be found to be deleted %s - "
-                            "Certbot probably shut down unexpectedly",
-                            os.linesep, path)
+            for path in _read_json_file(file_list):
+                # Files are registered before they are added... so
+                # check to see if file exists first
+                if os.path.lexists(path):
+                    os.remove(path)
+                else:
+                    logger.warning(
+                        "File: %s - Could not be found to be deleted %s - "
+                        "Certbot probably shut down unexpectedly",
+                        os.linesep, path)
         except (IOError, OSError):
             logger.critical(
                 "Unable to remove filepaths contained within %s", file_list)
@@ -585,3 +540,20 @@ class Reverter(object):
             self.config.in_progress_dir, final_dir)
         raise errors.ReverterError(
             "Unable to finalize checkpoint renaming")
+
+
+def _read_json_file(filepath):
+    try:
+        with open(filepath, 'r') as file_h:
+            return json.loads(file_h.read())
+    except IOError as error:
+        if error.errno != errno.ENOENT:
+            raise
+        return []
+    except json.decoder.JSONDecodeError:
+        return []
+
+
+def _write_json_file(filepath, data):
+    with open(filepath, 'w') as file_h:
+        file_h.write(json.dumps(data))
