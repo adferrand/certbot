@@ -12,11 +12,20 @@ import multiprocessing
 import sys
 import stat
 import errno
+import urllib3
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
+import logging
 from distutils.version import LooseVersion
+import warnings
 
 from six.moves import socketserver, SimpleHTTPServer
 from OpenSSL import crypto
 import requests
+
+from certbot import main, util
 
 
 def check_until_timeout(url):
@@ -179,3 +188,55 @@ def get_certbot_version():
     # Typical response is: output = 'certbot 0.31.0.dev0'
     # version_str = output.split(' ')[1]
     return LooseVersion('0.31.0.dev0')
+
+
+class NonZeroExitCodeRaised(Exception):
+    pass
+
+
+class _RedirectStringIO(object):
+    def __init__(self, secondary_writer):
+        super(_RedirectStringIO, self).__init__()
+        self._primary_writer = StringIO()
+        self._secondary_writer = secondary_writer
+
+    def write(self, data):
+        self._primary_writer.write(data)
+        self._secondary_writer.write(data)
+
+    def __getattr__(self, item):
+        return getattr(self._primary_writer, item)
+
+
+def run_certbot_in_isolation(cli_args, workspace, environ):
+    orig_stdout = sys.stdout
+    orig_sys_excepthook = sys.excepthook
+    orig_logging_handlers = logging.getLogger().handlers[:]
+    orig_environ = os.environ.copy()
+    orig_cwd = os.getcwd()
+    capture_stdout = _RedirectStringIO(sys.stdout)
+    try:
+        sys.stdout = capture_stdout
+        os.environ = environ
+        os.chdir(workspace)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
+            main.main(cli_args)
+    except SystemExit as error:
+        if error.code:
+            raise NonZeroExitCodeRaised()
+    except Exception:
+        raise NonZeroExitCodeRaised()
+    finally:
+        util._release_locks()
+        sys.stdout = orig_stdout
+        sys.excepthook = orig_sys_excepthook
+        for handler in logging.getLogger().handlers:
+            if handler not in orig_logging_handlers:
+                handler.flush()
+                handler.close()
+                logging.getLogger().removeHandler(handler)
+        os.environ = orig_environ
+        os.chdir(orig_cwd)
+
+    return capture_stdout.getvalue()

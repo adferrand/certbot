@@ -34,7 +34,7 @@ def test_basic_commands(context):
     context.certbot(['--help', 'all'])
     context.certbot(['--version'])
 
-    with pytest.raises(subprocess.CalledProcessError):
+    with pytest.raises(misc.NonZeroExitCodeRaised):
         context.certbot(['--csr'])
 
     new_count_tmpfiles = len(os.listdir(context.workspace))
@@ -421,7 +421,7 @@ def test_revoke_corner_cases(context):
     # Cannot use --cert-path and --cert-name during a revoke.
     cert1 = context.wtf('le1')
     context.certbot(['-d', cert1])
-    with pytest.raises(subprocess.CalledProcessError) as error:
+    with pytest.raises(misc.NonZeroExitCodeRaised) as error:
         context.certbot([
             'revoke', '--cert-name', cert1,
             '--cert-path', join(context.config_dir, 'live/{0}/fullchain.pem'.format(cert1))

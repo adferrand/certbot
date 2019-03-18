@@ -68,7 +68,6 @@ class IntegrationTestsContext(object):
             additional_args.append('--no-random-sleep-on-renew')
 
         command = [
-            'certbot',
             '--server', self.directory_url,
             '--no-verify-ssl',
             '--tls-sni-01-port', str(self.tls_alpn_01_port),
@@ -89,8 +88,7 @@ class IntegrationTestsContext(object):
         command.extend(additional_args)
 
         print('Invoke command:\n{0}'.format(subprocess.list2cmdline(command)))
-        return subprocess.check_output(command, universal_newlines=True,
-                                       cwd=self.workspace, env=new_environ)
+        return misc.run_certbot_in_isolation(command, self.workspace, new_environ)
 
     def _common_test(self, args):
         """
