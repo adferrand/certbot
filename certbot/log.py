@@ -54,8 +54,7 @@ def pre_arg_parse_setup():
     `sys.excepthook` to properly log/display fatal exceptions.
 
     """
-    original_handlers = set(logging.getLogger().handlers)
-    original_except_hook = sys.excepthook
+    original_handlers = logging.getLogger().handlers[:]
 
     temp_handler = TempHandler()
     temp_handler.setFormatter(logging.Formatter(FILE_FMT))
@@ -83,7 +82,7 @@ def pre_arg_parse_setup():
                 handler.flush()
                 handler.close()
                 root_logger.removeHandler(handler)
-        sys.excepthook = original_except_hook
+        sys.excepthook = sys.__excepthook__
 
 
 def _post_arg_parse_setup(config):
