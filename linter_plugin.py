@@ -25,9 +25,10 @@ class ForbidStandardOsModule(BaseChecker):
     name = 'forbid-os-module'
     msgs = {
         'E5001': (
-            'Use of os module is forbidden in Certbot. Use certbot.compat.os instead.',
+            'Use of os module is forbidden in Certbot, certbot.compat.os must be used instead',
             'os-module-forbidden',
-            'Some methods from standard os modules cannot be used for security reasons on Windows.'
+            'Some methods from standard os modules cannot be used for security reasons on Windows: '
+            'the safe wrapper certbot.compat.os must be used instead.'
         )
     }
     priority = -1
