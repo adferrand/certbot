@@ -45,7 +45,7 @@ AUTHORITATIVE_CONSTRAINTS = {
     # Package enum34 needs to be explicitly limited to Python2.x, in order to avoid
     # certbot-auto failures on Python 3.6+ which enum34 doesn't support. See #5456.
     # TODO: hashin seems to overwrite environment markers in dependencies. This needs to be fixed.
-    'enum34': '1.1.6 ; python_version < \'3.4\''
+    'enum34': '1.1.6; python_version < \'3.4\''
 }
 
 
@@ -173,17 +173,22 @@ def _consolidate_and_validate_dependencies(dependency_map):
     requirements = []
     conflicts = []
     for package, versions in dependency_map.items():
-        reduced_versions = _reduce_versions(versions)
-
-        if len(reduced_versions) > 1:
-            version_list = ['{0} ({1})'.format(version, ','.join(distributions))
-                            for version, distributions in reduced_versions.items()]
-            conflict = ('package {0} is declared with several versions: {1}'
-                        .format(package, ', '.join(version_list)))
-            conflicts.append(conflict)
-            sys.stderr.write('ERROR: {0}\n'.format(conflict))
+        if package in AUTHORITATIVE_CONSTRAINTS:
+            # Get directly the authoritative constraint, in order to keep
+            # the verbatim environment markers
+            requirements.append((package, AUTHORITATIVE_CONSTRAINTS[package]))
         else:
-            requirements.append((package, list(reduced_versions)[0]))
+            reduced_versions = _reduce_versions(versions)
+
+            if len(reduced_versions) > 1:
+                version_list = ['{0} ({1})'.format(version, ','.join(distributions))
+                                for version, distributions in reduced_versions.items()]
+                conflict = ('package {0} is declared with several versions: {1}'
+                            .format(package, ', '.join(version_list)))
+                conflicts.append(conflict)
+                sys.stderr.write('ERROR: {0}\n'.format(conflict))
+            else:
+                requirements.append((package, list(reduced_versions)[0]))
 
     requirements.sort(key=lambda x: x[0])
     return requirements, conflicts
