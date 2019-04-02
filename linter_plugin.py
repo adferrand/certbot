@@ -32,11 +32,13 @@ class ForbidStandardOsModule(BaseChecker):
     }
     priority = -1
 
+    # TODO: exclude acme module from the check
     @check_messages('os-module-forbidden')
     def visit_import(self, node):
         if 'os' in [alias.name for alias in node.names]:
             self.add_message('os-module-forbidden', node=node)
 
+    # TODO: exclude acme module from the check
     @check_messages('os-module-forbidden')
     def visit_importfrom(self, node):
         if node.module == 'node':
