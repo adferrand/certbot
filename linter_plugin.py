@@ -1,11 +1,13 @@
 """Certbot PyLint plugin.
-
 http://docs.pylint.org/plugins.html
-
 """
 from pylint.checkers import BaseChecker
 from pylint.interfaces import IAstroidChecker
 from pylint.checkers.utils import check_messages
+
+
+# Module in theses packages can import os module.
+WHITELIST_PACKAGES = ['acme']
 
 
 def register(linter):
@@ -34,11 +36,17 @@ class ForbidStandardOsModule(BaseChecker):
     # TODO: exclude acme module from the check
     @check_messages('os-module-forbidden')
     def visit_import(self, node):
-        if 'os' in [name[0] for name in node.names]:
+        if 'os' in [name[0] for name in node.names] and not _check_disabled(node):
             self.add_message('os-module-forbidden', node=node)
 
     # TODO: exclude acme module from the check
     @check_messages('os-module-forbidden')
     def visit_importfrom(self, node):
-        if node.modname == 'os':
+        if node.modname == 'os' and not _check_disabled(node):
             self.add_message('os-module-forbidden', node=node)
+
+
+def _check_disabled(node):
+    module = node.root()
+    return any([package for package in WHITELIST_PACKAGES
+                if module.name.startswith(package + '.')])
