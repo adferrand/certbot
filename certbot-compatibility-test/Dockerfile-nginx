@@ -1,6 +1,8 @@
 FROM certbot-compatibility-test
 MAINTAINER Brad Warren <bmw@eff.org>
 
+ENV CONFIGS_SUBSET 0-100
+
 RUN apt-get install nginx -y
 
 ENTRYPOINT [ "certbot-compatibility-test", "-p", "nginx" ]

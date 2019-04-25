@@ -1,5 +1,6 @@
 """Provides a common base for configurator proxies"""
 import logging
+import math
 import os
 import shutil
 import tempfile
@@ -31,6 +32,14 @@ class Proxy(object):
         self._configs = [
             os.path.join(config_dir, config)
             for config in os.listdir(config_dir)]
+
+        configs_subset = os.environ.get('CONFIGS_SUBSET')
+        if configs_subset:
+            range_percentage = configs_subset.split('-')
+            low, high = int(range_percentage[0]), int(range_percentage[1])
+            low_boundary = max(0, math.ceil(low * len(self._configs)) - 1)
+            high_boundary = min(len(self._configs) - 1, math.floor(high * len(self._configs)) - 1)
+            self._configs = self._configs[low_boundary:high_boundary]
 
         self.args = args
         self.http_port = 80
