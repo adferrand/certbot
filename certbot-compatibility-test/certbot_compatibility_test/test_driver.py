@@ -307,10 +307,6 @@ def get_args():
     group.add_argument(
         "-e", "--enhance", action="store_true", help="tests the enhancements "
         "the plugin supports (implicitly includes installer tests)")
-    group.add_argument(
-        "-s", "--subset", help="tests against a subset of the server configurations, "
-                               "expressed as a percentage range (eg. 0-50 or 51-100)"
-    )
 
     for plugin in PLUGINS.itervalues():
         plugin.add_parser_arguments(parser)

@@ -37,11 +37,11 @@ class Proxy(object):
         if configs_subset:
             range_percentage = configs_subset.split('-')
             low, high = int(range_percentage[0]), int(range_percentage[1])
-            low_boundary = max(0, math.ceil(low * len(self._configs / 100)) - 1)
+            low_boundary = max(0, math.ceil(low * len(self._configs) / 100))
             high_boundary = min(len(self._configs) - 1, math.floor(high * len(self._configs) / 100) - 1)
-            print(low_boundary)
-            print(high_boundary)
-            self._configs = self._configs[low_boundary:high_boundary]
+            print(int(low_boundary))
+            print(int(high_boundary))
+            self._configs = self._configs[int(low_boundary):int(high_boundary)]
 
         self.args = args
         self.http_port = 80
