@@ -1,7 +1,7 @@
 FROM certbot-compatibility-test
 MAINTAINER Brad Warren <bmw@eff.org>
 
-ENV CONFIGS_SUBSET 0-100
+ENV CONFIGS_SUBSET ""
 
 RUN apt-get install nginx -y
 
