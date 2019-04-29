@@ -45,7 +45,13 @@ matrix:
       env: TOXENV=py27-cover FYI="py27 tests + code coverage"
 
     - sudo: required
-      env: TOXENV=nginx_compat
+      env: TOXENV=nginx_compat_auth
+      services: docker
+      before_install:
+      addons:
+      <<: *not-on-master
+    - sudo: required
+      env: TOXENV=nginx_compat_install_enhance
       services: docker
       before_install:
       addons:
