@@ -14,14 +14,16 @@ OS_DISTS = ['centos:7', 'ubuntu:16.04', 'ubuntu:18.04']
 
 class IntegrationTestsContext(object):
 
-    def __init__(self, request):
+    def __init__(self, request, letsencrypt_sources):
         self.workspace = tempfile.mkdtemp()
         self.request = request
         self.os_dist = request.param
         self.os_type = self.os_dist.split(':')[0]
 
-        self._load_letsencrypt()
-        self._load_letstests()
+        shutil.copytree(letsencrypt_sources, os.path.join(self.workspace, 'letsencrypt'))
+        for script in SCRIPTS:
+            shutil.copy(os.path.join(BASE_SCRIPTS_PATH, script),
+                        os.path.join(self.workspace, os.path.basename(script)))
         self.docker_id = self._launch_docker()
 
     def _launch_docker(self):
@@ -48,14 +50,6 @@ class IntegrationTestsContext(object):
         output = subprocess.check_output(command, universal_newlines=True)
         return output.strip()
 
-    def _load_letsencrypt(self):
-        command = ['git', 'clone', 'https://github.com/certbot/certbot.git', os.path.join(self.workspace, 'letsencrypt')]
-        subprocess.check_output(command)
-
-    def _load_letstests(self):
-        for script in SCRIPTS:
-            shutil.copy(os.path.join(BASE_SCRIPTS_PATH, script), os.path.join(self.workspace, os.path.basename(script)))
-
     def cleanup(self):
         subprocess.check_output(['docker', 'stop', self.docker_id])
         subprocess.check_output(['docker', 'rm', self.docker_id])
@@ -70,9 +64,21 @@ class IntegrationTestsContext(object):
         return 'docker_dist[{0}]'.format(self.os_dist)
 
 
+@pytest.fixture(scope='module')
+def letsencrypt_sources():
+    workspace = tempfile.mkdtemp()
+    path = os.path.join(workspace, 'letsencrypt')
+    command = ['git', 'clone', 'https://github.com/certbot/certbot.git', path]
+    subprocess.check_output(command)
+    try:
+        yield path
+    finally:
+        shutil.rmtree(workspace)
+
+
 @pytest.fixture()
-def docker_dist(request):
-    context = IntegrationTestsContext(request)
+def docker_dist(request, letsencrypt_sources):
+    context = IntegrationTestsContext(request, letsencrypt_sources)
     try:
         yield context
     finally:
