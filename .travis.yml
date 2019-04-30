@@ -39,6 +39,11 @@ matrix:
       sudo: required
       services: docker
       <<: *not-on-master
+    - python: "2.7"
+      env: TOXENV=letstest
+      sudo: required
+      services: docker
+      <<: *not-on-master
 
     # This job is always executed, including on master
     - python: "2.7"
