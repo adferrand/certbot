@@ -16,33 +16,34 @@ class IntegrationTestsContext(object):
 
     def __init__(self, request, letsencrypt_sources):
         self.workspace = tempfile.mkdtemp()
-        self.request = request
         self.os_dist = request.param
-        self.os_type = self.os_dist.split(':')[0]
 
         shutil.copytree(letsencrypt_sources, os.path.join(self.workspace, 'letsencrypt'))
         for script in SCRIPTS:
             shutil.copy(os.path.join(BASE_SCRIPTS_PATH, script),
                         os.path.join(self.workspace, os.path.basename(script)))
-        self.docker_id = self._launch_docker()
+        self.docker_id = self._launch_docker(request)
 
-    def _launch_docker(self):
-        if hasattr(self.request.config, 'slaveinput'):  # Worker node
-            self.worker_id = self.request.config.slaveinput['slaveid']
-            acme_xdist = self.request.config.slaveinput['acme_xdist']
+    def _launch_docker(self, request):
+        os_type = self.os_dist.split(':')[0]
+
+        if hasattr(request.config, 'slaveinput'):  # Worker node
+            worker_id = request.config.slaveinput['slaveid']
+            acme_xdist = request.config.slaveinput['acme_xdist']
         else:  # Primary node
-            self.worker_id = 'primary'
-            acme_xdist = self.request.config.acme_xdist
+            worker_id = 'primary'
+            acme_xdist = request.config.acme_xdist
 
         directory_url = acme_xdist['directory_url']
-        tls_alpn_01_port = acme_xdist['https_port'][self.worker_id]
-        http_01_port = acme_xdist['http_port'][self.worker_id]
+        tls_alpn_01_port = acme_xdist['https_port'][worker_id]
+        http_01_port = acme_xdist['http_port'][worker_id]
 
-        command = ['docker', 'run', '-d', '-it']
+        command = ['docker', 'run', '-d', '-it', '--network=host']
         command.extend(['-e', 'DIRECTORY_URL={0}'.format(directory_url)])
         command.extend(['-e', 'TLS_ALPN_01_PORT={0}'.format(tls_alpn_01_port)])
         command.extend(['-e', 'HTTP_01_PORT={0}'.format(http_01_port)])
-        command.extend(['-e', 'OS_TYPE={0}'.format(self.os_type)])
+        command.extend(['-e', 'OS_TYPE={0}'.format(os_type)])
+        command.extend(['-e', 'LE_SUFFIX={0}.wtf'.format(worker_id)])
         command.extend(['-v', '{0}:/workspace'.format(self.workspace)])
         command.extend(['-w', '/workspace'.format(self.workspace)])
         command.append(self.os_dist)
