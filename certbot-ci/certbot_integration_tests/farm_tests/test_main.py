@@ -44,8 +44,8 @@ class IntegrationTestsContext(object):
                    '-e', 'LE_SUFFIX={0}.wtf'.format(worker_id),
                    '-v', '{0}:/workspace'.format(self.workspace),
                    '-w', '/workspace'.format(self.workspace),
-                   '-p', str(http_01_port),
-                   '-p', str(tls_alpn_01_port),
+                   '-p', '{0}:{0}'.format(http_01_port),
+                   '-p', '{0}:{0}'.format(tls_alpn_01_port),
                    docker_envs[self.os_dist]]
 
         output = subprocess.check_output(command, universal_newlines=True)
