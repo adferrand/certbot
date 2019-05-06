@@ -33,18 +33,20 @@ class IntegrationTestsContext(object):
             worker_id = 'primary'
             acme_xdist = request.config.acme_xdist
 
-        directory_url = acme_xdist['directory_url']
+        directory_url = acme_xdist['directory_url'].replace('localhost', '172.17.0.1')
         tls_alpn_01_port = acme_xdist['https_port'][worker_id]
         http_01_port = acme_xdist['http_port'][worker_id]
 
-        command = ['docker', 'run', '-d', '-it', '--network=host']
-        command.extend(['-e', 'DIRECTORY_URL={0}'.format(directory_url)])
-        command.extend(['-e', 'TLS_ALPN_01_PORT={0}'.format(tls_alpn_01_port)])
-        command.extend(['-e', 'HTTP_01_PORT={0}'.format(http_01_port)])
-        command.extend(['-e', 'LE_SUFFIX={0}.wtf'.format(worker_id)])
-        command.extend(['-v', '{0}:/workspace'.format(self.workspace)])
-        command.extend(['-w', '/workspace'.format(self.workspace)])
-        command.append(docker_envs[self.os_dist])
+        command = ['docker', 'run', '-d', '-it',
+                   '-e', 'DIRECTORY_URL={0}'.format(directory_url),
+                   '-e', 'TLS_ALPN_01_PORT={0}'.format(tls_alpn_01_port),
+                   '-e', 'HTTP_01_PORT={0}'.format(http_01_port),
+                   '-e', 'LE_SUFFIX={0}.wtf'.format(worker_id),
+                   '-v', '{0}:/workspace'.format(self.workspace),
+                   '-w', '/workspace'.format(self.workspace),
+                   '-p', str(http_01_port),
+                   '-p', str(tls_alpn_01_port),
+                   docker_envs[self.os_dist]]
 
         output = subprocess.check_output(command, universal_newlines=True)
         return output.strip()
