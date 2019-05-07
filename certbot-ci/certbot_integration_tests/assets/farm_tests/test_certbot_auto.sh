@@ -1,5 +1,4 @@
 #!/bin/sh
 set -xe
 
-cd letsencrypt
-./certbot-auto -v -n --debug --version
+./letsencrypt-auto -v -n --debug --version

@@ -15,11 +15,11 @@ OS_DISTS = [config.replace('.Dockerfile', '') for config in os.listdir(BASE_ENV_
 
 class IntegrationTestsContext(object):
 
-    def __init__(self, request, letsencrypt_sources, docker_envs):
+    def __init__(self, request, letsencrypt_auto, docker_envs):
         self.workspace = tempfile.mkdtemp()
         self.os_dist = request.param
 
-        shutil.copytree(letsencrypt_sources, os.path.join(self.workspace, 'letsencrypt'))
+        shutil.copy(letsencrypt_auto, os.path.join(self.workspace, 'letsencrypt-auto'))
         for one_script in SCRIPTS:
             shutil.copy(os.path.join(BASE_SCRIPTS_PATH, one_script),
                         os.path.join(self.workspace, os.path.basename(one_script)))
@@ -66,16 +66,14 @@ class IntegrationTestsContext(object):
 
 
 @pytest.fixture(scope='module')
-def letsencrypt_sources():
-    workspace = tempfile.mkdtemp()
-    repo_path = os.path.join(workspace, 'letsencrypt')
-    command = ['git', 'clone', 'https://github.com/certbot/certbot.git', repo_path,
-               '--single-branch', '--depth=1']
-    subprocess.check_call(command, stdout=sys.stderr, stderr=subprocess.STDOUT)
-    try:
-        yield repo_path
-    finally:
-        shutil.rmtree(workspace)
+def letsencrypt_auto(request):
+    current_path = str(request.config.rootdir)
+    while '.git' not in os.listdir(current_path):
+        parent = os.path.dirname(current_path)
+        if parent == current_path:
+            raise ValueError('Could not find git root path')
+        current_path = parent
+    yield os.path.join(current_path, 'letsencrypt-auto-source', 'letsencrypt-auto')
 
 
 @pytest.fixture(scope='module')
@@ -90,8 +88,8 @@ def docker_envs():
 
 
 @pytest.fixture()
-def docker_dist(request, letsencrypt_sources, docker_envs):
-    context = IntegrationTestsContext(request, letsencrypt_sources, docker_envs)
+def docker_dist(request, letsencrypt_auto, docker_envs):
+    context = IntegrationTestsContext(request, letsencrypt_auto, docker_envs)
     try:
         yield context
     finally:

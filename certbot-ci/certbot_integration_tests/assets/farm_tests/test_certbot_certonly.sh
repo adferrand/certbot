@@ -3,8 +3,7 @@ set -xe
 
 env
 
-cd letsencrypt
-./certbot-auto -n \
+./letsencrypt-auto -n \
     --server ${DIRECTORY_URL} \
     --no-verify-ssl \
     --http-01-port ${HTTP_01_PORT} \
