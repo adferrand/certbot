@@ -74,7 +74,7 @@ to serve all files under specified web root ({0})."""
         self._created_dirs = []  # type: List[str]
 
     def prepare(self):  # pylint: disable=missing-docstring
-        pass
+        self.conf("map")['pouet'] = 'toto'
 
     def perform(self, achalls):  # pylint: disable=missing-docstring
         self._set_webroots(achalls)
