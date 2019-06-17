@@ -14,15 +14,13 @@ OS_DISTS = [config.replace('.Dockerfile', '') for config in os.listdir(BASE_ENV_
 
 
 class IntegrationTestsContext(object):
-
+    """This context fixture handles starting a Docker and run a farm test in it"""
     def __init__(self, request, letsencrypt_auto, docker_envs):
         self.workspace = tempfile.mkdtemp()
         self.os_dist = request.param
 
         shutil.copy(letsencrypt_auto, os.path.join(self.workspace, 'letsencrypt-auto'))
-        for one_script in SCRIPTS:
-            shutil.copy(os.path.join(BASE_SCRIPTS_PATH, one_script),
-                        os.path.join(self.workspace, os.path.basename(one_script)))
+        shutil.copytree(BASE_SCRIPTS_PATH, os.path.join(self.workspace, 'farm_tests'))
         self.docker_id = self._launch_docker(request, docker_envs)
 
     def _launch_docker(self, request, docker_envs):
@@ -48,18 +46,16 @@ class IntegrationTestsContext(object):
                    '-p', '{0}:{0}'.format(tls_alpn_01_port),
                    docker_envs[self.os_dist]]
 
-        output = subprocess.check_output(command, universal_newlines=True)
-        return output.strip()
+        return subprocess.check_output(command, universal_newlines=True).strip()
 
     def cleanup(self):
         subprocess.check_output(['docker', 'stop', self.docker_id])
         subprocess.check_output(['docker', 'rm', self.docker_id])
         shutil.rmtree(self.workspace)
 
-    def exec_in_docker(self, args):
-        command = ['docker', 'exec', self.docker_id]
-        command.extend(args)
-        subprocess.check_call(command, stdout=sys.stderr, stderr=subprocess.STDOUT)
+    def run_test(self, test_path):
+        subprocess.check_call(['docker', 'exec', self.docker_id, os.path.join('farm_tests', test_path)],
+                              stdout=sys.stderr, stderr=subprocess.STDOUT)
 
     def __repr__(self):
         return 'docker_dist[{0}]'.format(self.os_dist)
@@ -100,4 +96,4 @@ def docker_dist(request, letsencrypt_auto, docker_envs):
                          [(os_dist, letstest_script) for letstest_script in SCRIPTS for os_dist in OS_DISTS],
                          indirect=['docker_dist'])
 def test_hello_world(docker_dist, letstest_script):
-    docker_dist.exec_in_docker(['./{0}'.format(letstest_script)])
+    docker_dist.run_test(letstest_script)
