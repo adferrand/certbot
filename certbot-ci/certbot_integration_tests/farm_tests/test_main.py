@@ -23,7 +23,12 @@ class IntegrationTestsContext(object):
         for one_script in SCRIPTS:
             shutil.copy(os.path.join(BASE_SCRIPTS_PATH, one_script),
                         os.path.join(self.workspace, os.path.basename(one_script)))
+        self._prepare_pytest_launcher()
         self.docker_id = self._launch_docker(request, docker_envs)
+
+    def _prepare_pytest_launcher(self):
+        pytest_runner_path = pkg_resources.resource_filename('certbot_integration_tests', 'assets/pytest_runner.py')
+        subprocess.check_call(['pyinstaller', '--onefile', pytest_runner_path], cwd=self.workspace)
 
     def _launch_docker(self, request, docker_envs):
         if hasattr(request.config, 'slaveinput'):  # Worker node
@@ -56,9 +61,9 @@ class IntegrationTestsContext(object):
         subprocess.check_output(['docker', 'rm', self.docker_id])
         shutil.rmtree(self.workspace)
 
-    def exec_in_docker(self, args):
+    def run_farm_test(self, farm_test_path):
         command = ['docker', 'exec', self.docker_id]
-        command.extend(args)
+        command.extend(['/workspace/dist/pytest_runner', '-s', farm_test_path])
         subprocess.check_call(command, stdout=sys.stderr, stderr=subprocess.STDOUT)
 
     def __repr__(self):
@@ -100,4 +105,4 @@ def docker_dist(request, letsencrypt_auto, docker_envs):
                          [(os_dist, letstest_script) for letstest_script in SCRIPTS for os_dist in OS_DISTS],
                          indirect=['docker_dist'])
 def test_hello_world(docker_dist, letstest_script):
-    docker_dist.exec_in_docker(['./{0}'.format(letstest_script)])
+    docker_dist.run_farm_test(letstest_script)
