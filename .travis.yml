@@ -32,6 +32,11 @@ matrix:
   include:
     # Main test suite
     - python: "2.7"
+      env: ACME_SERVER=pebble TOXENV=poc-letstest
+      sudo: required
+      services: docker
+      <<: *not-on-master
+    - python: "2.7"
       env: ACME_SERVER=pebble TOXENV=integration
       sudo: required
       services: docker
