@@ -1,8 +1,6 @@
 #!/bin/sh
 set -xe
 
-env
-
 ./letsencrypt-auto -n \
     --server ${DIRECTORY_URL} \
     --no-verify-ssl \
