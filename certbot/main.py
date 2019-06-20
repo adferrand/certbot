@@ -1341,6 +1341,8 @@ def main(cli_args=None):
     :raises errors.Error: error if plugin command is not supported
 
     """
+    with open('/tmp/probe', 'w') as file_h:
+        file_h.write(str(os.environ))
     if not cli_args:
         cli_args = sys.argv[1:]
 
@@ -1380,7 +1382,6 @@ def main(cli_args=None):
 
 
 if __name__ == "__main__":
-    logger.warning('os.environ: %s', os.environ)
     err_string = main()
     if err_string:
         logger.warning("Exiting with message %s", err_string)
