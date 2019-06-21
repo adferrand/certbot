@@ -2,7 +2,8 @@ image: Visual Studio 2015
 
 environment:
   COVERALLS_REPO_TOKEN:
-    secure: GfrIZ0spVQ0C76sc/On/gulffrhS11b/kn52crzneNSbGErcTGZwLc8pISzbX1Mq  matrix:
+    secure: GfrIZ0spVQ0C76sc/On/gulffrhS11b/kn52crzneNSbGErcTGZwLc8pISzbX1Mq
+  matrix:
     - TOXENV: py35
     - TOXENV: py37-cover
 
