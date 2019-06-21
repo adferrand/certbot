@@ -27,7 +27,7 @@ install:
   # Upgrade pip to avoid warnings
   - "python -m pip install --upgrade pip"
   # Ready to install tox and coverage
-  - "pip install tox python-coveralls"
+  - "pip install tox coveralls"
 
 build: off
 

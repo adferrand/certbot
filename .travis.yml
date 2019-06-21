@@ -273,7 +273,7 @@ addons:
     - nginx-light
     - openssl
 
-install: "$(command -v pip || command -v pip3) install python-coveralls tox"
+install: "$(command -v pip || command -v pip3) install coveralls tox"
 script: tox
 
 after_success: '[ "$TOXENV" == "py27-cover" ] && coveralls'
