@@ -207,8 +207,8 @@ class NginxConfigurator(common.Installer):
         domain originally passed for deploy_cert(). This is especially true
         with wildcard certificates
         """
-        cert_directives = [['\n    ', 'ssl_certificate', ' ', fullchain_path],
-                           ['\n    ', 'ssl_certificate_key', ' ', key_path]]
+        cert_directives = [['\n    ', 'ssl_certificate', ' ', fullchain_path.replace('\\', '/')],
+                           ['\n    ', 'ssl_certificate_key', ' ', key_path.replace('\\', '/')]]
 
         self.parser.update_or_add_server_directives(vhost,
                                           cert_directives)

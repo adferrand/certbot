@@ -1,5 +1,6 @@
 """General purpose nginx test configuration generator."""
 import getpass
+import os
 
 import pkg_resources
 
@@ -20,11 +21,19 @@ def construct_nginx_config(nginx_root, nginx_webroot, http_port, https_port, oth
     :return: a string containing the full nginx configuration
     :rtype: str
     """
+    user = getpass.getuser() if os.name != 'nt' else 'nobody'
     key_path = key_path if key_path \
         else pkg_resources.resource_filename('certbot_integration_tests', 'assets/key.pem')
     cert_path = cert_path if cert_path \
         else pkg_resources.resource_filename('certbot_integration_tests', 'assets/cert.pem')
-    return '''\
+
+    # Even on Windows, Nginx requires forward slashes path separators
+    nginx_root = nginx_root.replace('\\', '/')
+    nginx_webroot = nginx_webroot.replace('\\', '/')
+    key_path = key_path.replace('\\', '/')
+    cert_path = cert_path.replace('\\', '/')
+
+    config = '''\
 # This error log will be written regardless of server scope error_log
 # definitions, so we have to set this here in the main scope.
 #
@@ -48,8 +57,8 @@ http {{
   client_body_temp_path {nginx_root}/client_body;
   fastcgi_temp_path {nginx_root}/fastcgi_temp;
   proxy_temp_path {nginx_root}/proxy_temp;
-  #scgi_temp_path {nginx_root}/scgi_temp;
-  #uwsgi_temp_path {nginx_root}/uwsgi_temp;
+  scgi_temp_path {nginx_root}/scgi_temp;
+  uwsgi_temp_path {nginx_root}/uwsgi_temp;
   access_log {nginx_root}/error.log;
   
   # This should be turned off in a Virtualbox VM, as it can cause some
@@ -120,7 +129,9 @@ http {{
     ssl_certificate_key {key_path};
   }}
 }}
-'''.format(nginx_root=nginx_root, nginx_webroot=nginx_webroot, user=getpass.getuser(),
+'''.format(nginx_root=nginx_root, nginx_webroot=nginx_webroot, user=user,
            http_port=http_port, https_port=https_port, other_port=other_port,
            default_server='default_server' if default_server else '', wtf_prefix=wtf_prefix,
            key_path=key_path, cert_path=cert_path)
+    print(config)
+    return config

@@ -1,5 +1,6 @@
 import os
 import subprocess
+import time
 
 from certbot_integration_tests.certbot_tests import context as certbot_context
 from certbot_integration_tests.utils import misc, certbot_call
@@ -49,9 +50,13 @@ class IntegrationTestsContext(certbot_context.IntegrationTestsContext):
         with open(self.nginx_config_path, 'w') as file:
             file.write(self.nginx_config)
 
-        process = subprocess.Popen(['nginx', '-c', self.nginx_config_path, '-g', 'daemon off;'])
+        os.makedirs(os.path.join(self.nginx_root, 'logs'))
 
-        assert process.poll() is None
+        process = subprocess.Popen(['nginx', '-c', self.nginx_config_path, '-g', 'daemon off;'], cwd=self.nginx_root)
+
+        time.sleep(1)
+        status = process.poll()
+        assert status is None, "Error Nginx exited with status {0}".format(status)
         misc.check_until_timeout('http://localhost:{0}'.format(self.http_01_port))
         return process
 

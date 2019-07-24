@@ -70,7 +70,7 @@ class NginxHttp01(common.ChallengePerformer):
             authenticator hosts.
         """
         included = False
-        include_directive = ['\n', 'include', ' ', self.challenge_conf]
+        include_directive = ['\n', 'include', ' ', self.challenge_conf.replace('\\', '/')]
         root = self.configurator.parser.config_root
 
         bucket_directive = ['\n', 'server_names_hash_bucket_size', ' ', '128']

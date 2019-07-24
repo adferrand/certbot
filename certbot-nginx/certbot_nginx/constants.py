@@ -11,7 +11,7 @@ else:
 
 CLI_DEFAULTS = dict(
     server_root=server_root_tmp,
-    ctl="nginx",
+    ctl="nginx.exe" if platform.system() == "Windows" else "nginx",
 )
 """CLI defaults."""
 
