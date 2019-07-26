@@ -25,7 +25,9 @@ init:
       { $Env:APPVEYOR_SKIP_FINALIZE_ON_EXIT = 'true'; Exit-AppVeyorBuild }
 
 install:
-  # Prepare PATH
+  # Install Nginx for integration tests
+  - choco upgrade -y nginx --version 1.17.1
+  # Prepare PATH using Python 3.7 as default Python version
   - SET PATH=C:\\Python37;C:\\Python37\\Scripts;C:\\tools\nginx-1.17.1;%PATH%
   # Check env
   - python --version
