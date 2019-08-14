@@ -40,6 +40,7 @@ matrix:
     # Main test suite
      - env: TOXENV=py37
        os: windows
+       language: generic
 
 #    - python: "2.7"
 #      env: ACME_SERVER=pebble TOXENV=integration
