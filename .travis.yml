@@ -283,7 +283,7 @@ addons:
 install: tools/pip_install.py -U codecov tox virtualenv
 script: tox
 
-after_success: [ "$TOXENV" == *-cover ] && codecov -F "$TRAVIS_OS_NAME"
+after_success: '[ "$TOXENV" == *"-cover" ] && codecov -F "$TRAVIS_OS_NAME"'
 
 notifications:
   email: false
