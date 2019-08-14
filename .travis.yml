@@ -9,8 +9,16 @@ before_install:
   # On Travis, the fastest parallelization for integration tests has proved to be 4.
   - if [[ "$TOXENV" == *"integration"* ]]; then export PYTEST_ADDOPTS="--numprocesses 4"; fi
   # Install Python on Windows
-  - echo $PATH
-  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then choco install -y python3 --params "/InstallDir:C:\Python37"; export PATH="C:\Python37:$PATH"; fi
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+      if [[ "$TOXENV" == *"py35"* ]]; then
+        PYTHON_VERSION=3.5.4
+      else
+        PYTHON_VERSION=3.7.4
+      fi
+      choco install --no-progress -y python --version "$PYTHON_VERSION" --params "/InstallDir:C:\Python"
+      export PATH="/c/Python:$PATH"
+    fi
   # Always pass the TRAVIS env variable to any tox job
   - export TOX_TESTENV_PASSENV=TRAVIS
 
@@ -39,7 +47,13 @@ extended-test-suite: &extended-test-suite
 matrix:
   include:
     # Main test suite
-     - env: TOXENV=py37
+     - env: TOXENV=py35
+       os: windows
+       language: bash
+     - env: TOXENV=py37-cover
+       os: windows
+       language: bash
+     - env: TOXENV=integration-certbot
        os: windows
        language: bash
 
@@ -284,7 +298,7 @@ addons:
 install: tools/pip_install.py -U codecov tox virtualenv
 script: python -m tox
 
-after_success: '[ "$TOXENV" == *"-cover" ] && codecov -F "$TRAVIS_OS_NAME"'
+after_success: '[ "$TOXENV" == *"-cover" ] && python -m codecov -F "$TRAVIS_OS_NAME"'
 
 notifications:
   email: false
