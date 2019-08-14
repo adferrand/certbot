@@ -4,7 +4,7 @@ cache:
     directories:
         - $HOME/.cache/pip
 
-before_script:
+before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ulimit -n 1024 ; fi
   # On Travis, the fastest parallelization for integration tests has proved to be 4.
   - if [[ "$TOXENV" == *"integration"* ]]; then export PYTEST_ADDOPTS="--numprocesses 4"; fi
