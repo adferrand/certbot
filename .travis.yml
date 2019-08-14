@@ -13,11 +13,13 @@ before_install:
     if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
       if [[ "$TOXENV" == *"py35"* ]]; then
         PYTHON_VERSION=3.5.4
+        PYTHON_PATH="/c/Python34"
       else
         PYTHON_VERSION=3.7.4
+        PYTHON_PATH="/c/Python37"
       fi
-      choco install --no-progress -y python --version "$PYTHON_VERSION" --params "/InstallDir:C:\Python"
-      export PATH="/c/Python:$PATH"
+      choco install --no-progress -y python --version "$PYTHON_VERSION"
+      export PATH="$PYTHON_PATH:$PATH"
     fi
   # Always pass the TRAVIS env variable to any tox job
   - export TOX_TESTENV_PASSENV=TRAVIS
