@@ -40,7 +40,7 @@ matrix:
     # Main test suite
      - env: TOXENV=py37
        os: windows
-       language: generic
+       language: bash
 
 #    - python: "2.7"
 #      env: ACME_SERVER=pebble TOXENV=integration
@@ -280,10 +280,10 @@ addons:
 # virtualenv is listed here explicitly to make sure it is upgraded when
 # CERTBOT_NO_PIN is set to work around failures we've seen when using an older
 # version of virtualenv.
-install: "tools/pip_install.py -U codecov tox virtualenv"
+install: tools/pip_install.py -U codecov tox virtualenv
 script: tox
 
-after_success: '[ "$TOXENV" == "py27-cover" ] && codecov -F linux'
+after_success: [ "$TOXENV" == *-cover ] && codecov -F "$TRAVIS_OS_NAME"
 
 notifications:
   email: false
