@@ -5,11 +5,11 @@ cache:
         - $HOME/.cache/pip
 
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ulimit -n 1024 ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ulimit -n 1024; fi
   # On Travis, the fastest parallelization for integration tests has proved to be 4.
   - if [[ "$TOXENV" == *"integration"* ]]; then export PYTEST_ADDOPTS="--numprocesses 4"; fi
   # Install Python on Windows
-  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then choco upgrade -y python3 ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then choco upgrade -y python3; refreshenv; fi
   # Always pass the TRAVIS env variable to any tox job
   - export TOX_TESTENV_PASSENV=TRAVIS
 
