@@ -84,6 +84,9 @@ jobs:
     pool:
       vmImage: ubuntu-latest
     container: ubuntu:trusty
+    variables:
+      TOXENV: py27-{acme,apache,certbot,dns,nginx}-oldest
+      TRAVIS_BUILD_DIR: dummy
     steps:
       - task: UsePythonVersion@0
         inputs:
@@ -93,5 +96,5 @@ jobs:
           sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
           sudo apt install -y --no-install-recommends python-tox
         displayName: Install OS packages
-      - script: tox -e py27-{acme,apache,certbot,dns,nginx}-oldest
+      - script: tox
         displayName: 'Run tox'
