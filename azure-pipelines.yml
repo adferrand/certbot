@@ -92,7 +92,7 @@ jobs:
           addToPath: true
       - script: |
           sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
-          sudo apt install -y --no-install-recommends python-pip
+          sudo apt-get install -y --no-install-recommends python-pip nginx-light
           sudo pip install --upgrade tox
         displayName: Install OS packages
       - script: tox
