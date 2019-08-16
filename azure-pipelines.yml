@@ -49,7 +49,6 @@ jobs:
       - script: |
           sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
           sudo apt install -y --no-install-recommends nginx-light
-        condition: eq(variables['Agent.OS'], 'Linux')
         displayName: Install OS packages
       - script: python tools/pip_install.py tox codecov
         displayName: Install tools
@@ -90,10 +89,9 @@ jobs:
         inputs:
           versionSpec: 2.7
           addToPath: true
-      - script: sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
-        condition: eq(variables['Agent.OS'], 'Linux')
+      - script: |
+          sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
+          sudo apt install -y --no-install-recommends tox
         displayName: Install OS packages
-      - script: python tools/pip_install.py tox codecov
-        displayName: Install tools
       - script: python -m tox -e py27-{acme,apache,certbot,dns,nginx}-oldest
         displayName: 'Run tox'
