@@ -93,5 +93,5 @@ jobs:
           sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
           sudo apt install -y --no-install-recommends python-tox
         displayName: Install OS packages
-      - script: python -m tox -e py27-{acme,apache,certbot,dns,nginx}-oldest
+      - script: tox -e py27-{acme,apache,certbot,dns,nginx}-oldest
         displayName: 'Run tox'
