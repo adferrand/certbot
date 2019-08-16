@@ -1,3 +1,35 @@
+linux_steps: &linux_steps
+  steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: $(PYTHON_VERSION)
+        addToPath: true
+
+    - script: |
+        sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
+        sudo apt install -y --no-install-recommends nginx-light
+      condition: eq(variables['Agent.OS'], 'Linux')
+      displayName: Install OS packages
+
+    - script: python tools/pip_install.py tox codecov
+      displayName: Install tools
+
+    - script: python -m tox
+      displayName: 'Run tox'
+
+windows_steps: &windows_steps
+  steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: $(PYTHON_VERSION)
+        addToPath: true
+
+    - script: python tools/pip_install.py tox codecov
+      displayName: Install dependencies
+
+    - script: python -m tox
+      displayName: 'Run tox'
+
 trigger:
 - master
 
@@ -7,39 +39,41 @@ jobs:
       vmImage: ubuntu-latest
     strategy:
       matrix:
+        integration-certbot:
+          PYTHON_VERSION: 2.7
+          TOXENV: integration
+          PYTEST_ADDOPTS: --numprocesses 4
         py27-cover:
           PYTHON_VERSION: 2.7
           TOXENV: py35
+        pylint:
+          PYTHON_VERSION: 2.7
+          TOXENV: lint
+        py34-mypy:
+          PYTHON_VERSION: 3.4
+          TOXENV: mypy
+        py35-mypy:
+          PYTHON_VERSION: 3.5
+          TOXENV: mypy
         py34:
           PYTHON_VERSION: 3.4
           TOXENV: py34
         py37:
           PYTHON_VERSION: 3.7
           TOXENV: py37
-        integration-certbot:
+        apache-compat:
           PYTHON_VERSION: 2.7
-          TOXENV: integration
-          PYTEST_ADDOPTS: --numprocesses 4
-        pylint:
+          TOXENV: apache_compat
+        le-auto-xenial:
           PYTHON_VERSION: 2.7
-          TOXENV: lint
-        mypy:
-          PYTHON_VERSION: 3.5
-          TOXENV: mypy
-    steps:
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: $(PYTHON_VERSION)
-          addToPath: true
-      - script: |
-          sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
-          sudo apt install -y --no-install-recommends nginx-light
-        condition: eq(variables['Agent.OS'], 'Linux')
-        displayName: Install OS packages
-      - script: python tools/pip_install.py tox codecov
-        displayName: Install tools
-      - script: python -m tox
-        displayName: 'Run tox'
+          TOXENV: le_auto_xenial
+        apacheconftest:
+          PYTHON_VERSION: 2.7
+          TOXENV: apacheconftest-with-pebble
+        nginxroundtrip:
+          PYTHON_VERSION: 2.7
+          TOXENV: nginxroundtrip
+    <<: *linux_steps
 
   - job: windows
     pool:
@@ -56,12 +90,12 @@ jobs:
           PYTHON_VERSION: 3.7
           TOXENV: integration-certbot
           PYTEST_ADDOPTS: --numprocesses 4
-    steps:
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: $(PYTHON_VERSION)
-          addToPath: true
-      - script: python tools/pip_install.py tox codecov
-        displayName: Install dependencies
-      - script: python -m tox
-        displayName: 'Run tox'
+    <<: *windows_steps
+
+  - job: oldest_linux
+    pool:
+      vmImage: ubuntu-latest
+    container: ubuntu:trusty
+    variables:
+      TOXENV: py27-{acme,apache,certbot,dns,nginx}-oldest
+    <<: *linux_steps
