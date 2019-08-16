@@ -60,13 +60,13 @@ jobs:
       vmImage: windows-latest
     strategy:
       matrix:
-        windows-py35:
+        py35:
           PYTHON_VERSION: 3.5
           TOXENV: py35
-        windows-py37-cover:
+        py37-cover:
           PYTHON_VERSION: 3.7
           TOXENV: py37-cover
-        windows-integration-certbot:
+        integration-certbot:
           PYTHON_VERSION: 3.7
           TOXENV: integration-certbot
           PYTEST_ADDOPTS: --numprocesses 4
@@ -87,6 +87,7 @@ jobs:
     variables:
       TOXENV: py27-{acme,apache,certbot,dns,nginx}-oldest
       TRAVIS_BUILD_DIR: dummy
+      TRAVIS_BRANCH: dummy
     steps:
       - task: UsePythonVersion@0
         inputs:
