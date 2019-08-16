@@ -85,8 +85,6 @@ jobs:
     container: ubuntu:trusty
     variables:
       TOXENV: py27-{acme,apache,certbot,dns,nginx}-oldest
-      TRAVIS_BUILD_DIR: dummy
-      TRAVIS_BRANCH: dummy
     steps:
       - task: UsePythonVersion@0
         inputs:
@@ -97,5 +95,5 @@ jobs:
           sudo apt install -y --no-install-recommends python-pip
           sudo pip install --upgrade tox
         displayName: Install OS packages
-      - script: python -m tox
+      - script: tox
         displayName: 'Run tox'
