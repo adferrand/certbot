@@ -1,35 +1,3 @@
-linux_steps: &linux_steps
-  steps:
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: $(PYTHON_VERSION)
-        addToPath: true
-
-    - script: |
-        sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
-        sudo apt install -y --no-install-recommends nginx-light
-      condition: eq(variables['Agent.OS'], 'Linux')
-      displayName: Install OS packages
-
-    - script: python tools/pip_install.py tox codecov
-      displayName: Install tools
-
-    - script: python -m tox
-      displayName: 'Run tox'
-
-windows_steps: &windows_steps
-  steps:
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: $(PYTHON_VERSION)
-        addToPath: true
-
-    - script: python tools/pip_install.py tox codecov
-      displayName: Install dependencies
-
-    - script: python -m tox
-      displayName: 'Run tox'
-
 trigger:
 - master
 
@@ -73,7 +41,20 @@ jobs:
         nginxroundtrip:
           PYTHON_VERSION: 2.7
           TOXENV: nginxroundtrip
-    <<: *linux_steps
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: $(PYTHON_VERSION)
+          addToPath: true
+      - script: |
+          sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
+          sudo apt install -y --no-install-recommends nginx-light
+        condition: eq(variables['Agent.OS'], 'Linux')
+        displayName: Install OS packages
+      - script: python tools/pip_install.py tox codecov
+        displayName: Install tools
+      - script: python -m tox
+        displayName: 'Run tox'
 
   - job: windows
     pool:
@@ -90,12 +71,29 @@ jobs:
           PYTHON_VERSION: 3.7
           TOXENV: integration-certbot
           PYTEST_ADDOPTS: --numprocesses 4
-    <<: *windows_steps
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: $(PYTHON_VERSION)
+          addToPath: true
+      - script: python tools/pip_install.py tox codecov
+        displayName: Install dependencies
+      - script: python -m tox
+        displayName: 'Run tox'
 
   - job: oldest_linux
     pool:
       vmImage: ubuntu-latest
     container: ubuntu:trusty
-    variables:
-      TOXENV: py27-{acme,apache,certbot,dns,nginx}-oldest
-    <<: *linux_steps
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: 2.7
+          addToPath: true
+      - script: sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
+        condition: eq(variables['Agent.OS'], 'Linux')
+        displayName: Install OS packages
+      - script: python tools/pip_install.py tox codecov
+        displayName: Install tools
+      - script: python -m tox -e py27-{acme,apache,certbot,dns,nginx}-oldest
+        displayName: 'Run tox'
