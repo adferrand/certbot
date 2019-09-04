@@ -11,6 +11,9 @@ jobs:
           - python-version: 2.7
             toxenv: integration
             pytest-addopts: --numprocesses 4
+    env:
+      TOXENV: {{ matrix.toxenv }}
+      PYTEST_ADDOPTS: {{ matrix.pytest-addopts }}
     steps:
       - name: Checkout Certbot code 
         uses: actions/checkout@v1
@@ -25,6 +28,3 @@ jobs:
           python tools/pip_install.py tox codecov
       - name: Run tox
         run: python -m tox
-        env:
-          TOXENV: {{ matrix.toxenv }}
-          PYTEST_ADDOPTS: {{ matrix.pytest-addopts }}
