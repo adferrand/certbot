@@ -24,4 +24,7 @@ jobs:
           sudo apt install -y --no-install-recommends nginx-light
           python tools/pip_install.py tox codecov
       - name: Run tox
-        run: python -m tox {{ matrix.pytest-addopts }} -e {{ matrix.toxenv }}
+        run: python -m tox
+        env:
+          TOXENV: ${{ matrix.toxenv }}
+          PYTEST_ADDOPTS: ${{ matrix.pytest-addopts }}
