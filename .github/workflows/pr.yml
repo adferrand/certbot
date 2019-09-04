@@ -11,20 +11,20 @@ jobs:
           - python-version: 2.7
             toxenv: integration
             pytest-addopts: --numprocesses 4
-      steps:
-        - name: Checkout Certbot code 
-          uses: actions/checkout@v1
-        - name: Set up Python ${{ matrix.python-version }}
-          uses: actions/setup-python@v1
-          with:
-            python-version: ${{ matrix.python-version }}
-        - name: Install dependencies
-          run: |
-            sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
-            sudo apt install -y --no-install-recommends nginx-light
-            python tools/pip_install.py tox codecov
-        - name: Run tox
-          run: python -m tox
-          env:
-            TOXENV: {{ matrix.toxenv }}
-            PYTEST_ADDOPTS: {{ matrix.pytest-addopts }}
+    steps:
+      - name: Checkout Certbot code 
+        uses: actions/checkout@v1
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
+          sudo apt install -y --no-install-recommends nginx-light
+          python tools/pip_install.py tox codecov
+      - name: Run tox
+        run: python -m tox
+        env:
+          TOXENV: {{ matrix.toxenv }}
+          PYTEST_ADDOPTS: {{ matrix.pytest-addopts }}
