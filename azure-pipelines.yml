@@ -49,7 +49,7 @@ jobs:
       - script: |
           sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
           sudo apt install -y --no-install-recommends nginx-light
-          python tools/pip_install.py tox codecov
+          python tools/pip_install.py -U tox codecov
         displayName: Install dependencies
       - script: python -m tox
         displayName: 'Run tox'
@@ -74,7 +74,7 @@ jobs:
         inputs:
           versionSpec: $(PYTHON_VERSION)
           addToPath: true
-      - script: python tools/pip_install.py tox codecov
+      - script: python tools/pip_install.py -U tox codecov
         displayName: Install dependencies
       - script: python -m tox
         displayName: 'Run tox'
@@ -92,7 +92,8 @@ jobs:
           addToPath: true
       - script: |
           sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
-          sudo apt-get install -y --no-install-recommends git python-pip nginx-light tox
+          sudo apt-get install -y --no-install-recommends git python-pip nginx-light
+          python tools/pip_install.py -U tox
         displayName: Install OS packages
       - script: tox
         displayName: 'Run tox'
