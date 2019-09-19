@@ -52,15 +52,15 @@ extended-test-suite: &extended-test-suite
 matrix:
   include:
     # Main test suite
-     - env: TOXENV=py35
-       os: windows
-       language: bash
-     - env: TOXENV=py37-cover
-       os: windows
-       language: bash
-     - env: TOXENV=integration-certbot
-       os: windows
-       language: bash
+    - env: TOXENV=py35
+      os: windows
+      language: bash
+    - env: TOXENV=py37-cover
+      os: windows
+      language: bash
+    - env: TOXENV=integration-certbot
+      os: windows
+      language: bash
 
     - python: "2.7"
       env: ACME_SERVER=pebble TOXENV=integration
