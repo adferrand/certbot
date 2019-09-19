@@ -28,6 +28,7 @@ def main():
 
 def _build_installer(installer_cfg_path, venv_path):
     print('Build the installer')
+    print(os.path.join(venv_path, 'Scripts', 'pynsist.exe'))
     subprocess.check_call([os.path.join(venv_path, 'Scripts', 'pynsist.exe'), installer_cfg_path])
 
 
@@ -49,7 +50,6 @@ def _compile_wheels(repo_path, build_path, venv_python):
 
 def _prepare_build_tools(venv_path, venv_python):
     print('Prepare build tools')
-    subprocess.check_call([sys.executable, '-m', 'venv', venv_path])
     subprocess.check_call(['choco', 'upgrade', '-y', 'nsis'])
     subprocess.check_call([venv_python, '-m', 'pip', 'install', '--upgrade', 'pip'])
     subprocess.check_call([venv_python, '-m', 'pip', 'install', 'wheel', 'pynsist'])
@@ -140,7 +140,12 @@ def _prepare_environment():
     script_path = os.path.realpath(__file__)
     repo_path = os.path.dirname(os.path.dirname(script_path))
     build_path = os.path.join(repo_path, 'windows-installer', 'build')
-    venv_path = os.path.join(build_path, 'venv-config')
+
+    if 'VIRTUAL_ENV' in os.environ:
+        venv_path = os.environ['VIRTUAL_ENV']
+    else:
+        venv_path = os.path.join(build_path, 'venv-config')
+        subprocess.check_call([sys.executable, '-m', 'venv', venv_path])
     venv_python = os.path.join(venv_path, 'Scripts', 'python.exe')
 
     return build_path, repo_path, venv_path, venv_python
