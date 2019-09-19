@@ -21,6 +21,7 @@ before_install:
       fi
       choco install --no-progress -y python --version "$PYTHON_VERSION"
       export PATH="$PYTHON_PATH:$PATH"
+      python -m ensurepip
     fi
   # Use Travis retry feature for farm tests since they are flaky
   - 'if [[ "$TOXENV" == "travis-test-farm"* ]]; then export TRAVIS_RETRY=travis_retry; fi'
