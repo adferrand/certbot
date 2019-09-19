@@ -13,7 +13,7 @@ before_install:
   - |
     if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
       if [[ "$TOXENV" == *"py35"* ]]; then
-        PYTHON_VERSION=3.5.4
+        PYTHON_VERSION=3.5.7
         PYTHON_PATH="/c/Python34"
       else
         PYTHON_VERSION=3.7.4
@@ -21,7 +21,6 @@ before_install:
       fi
       choco install --no-progress -y python --version "$PYTHON_VERSION"
       export PATH="$PYTHON_PATH:$PATH"
-      python -m ensurepip
     fi
   # Use Travis retry feature for farm tests since they are flaky
   - 'if [[ "$TOXENV" == "travis-test-farm"* ]]; then export TRAVIS_RETRY=travis_retry; fi'
