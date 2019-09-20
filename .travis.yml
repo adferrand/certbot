@@ -4,7 +4,7 @@ cache:
     directories:
         - $HOME/.cache/pip
 
-before_script:
+before_install:
   - 'if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ulimit -n 1024 ; fi'
   # On Travis, the fastest parallelization for integration tests has proved to be 4.
   - 'if [[ "$TOXENV" == *"integration"* ]]; then export PYTEST_ADDOPTS="--numprocesses 4"; fi'
@@ -13,8 +13,8 @@ before_script:
   # Install Python on Windows
   - |
     if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
-      nuget.exe install pythonx86 -ExcludeVersion -OutputDirectory /c "$PYTHON_VERSION"
-      export PATH="/c/python:$PATH"
+      nuget.exe install pythonx86 -ExcludeVersion -OutputDirectory /c -Version "$PYTHON_VERSION"
+      export PATH="/c/python/tools:$PATH"
     fi
   - export TOX_TESTENV_PASSENV=TRAVIS
 
