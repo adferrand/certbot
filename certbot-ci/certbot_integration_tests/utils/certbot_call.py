@@ -64,11 +64,11 @@ def _prepare_environ(workspace):
     return new_environ
 
 
-def _compute_additional_args(workspace, environ, force_renew):
+def _compute_additional_args(workspace, environ, force_renew, certbot_path):
     additional_args = []
-    output = subprocess.check_output(['certbot', '--version'],
-                                     universal_newlines=True, stderr=subprocess.STDOUT,
-                                     cwd=workspace, env=environ)
+    output = subprocess.check_output([certbot_path, '--version'],
+                                      universal_newlines=True, stderr=subprocess.STDOUT,
+                                      cwd=workspace, env=environ)
     version_str = output.split(' ')[1].strip()  # Typical response is: output = 'certbot 0.31.0.dev0'
     if LooseVersion(version_str) >= LooseVersion('0.30.0'):
         additional_args.append('--no-random-sleep-on-renew')
@@ -83,10 +83,17 @@ def _prepare_args_env(certbot_args, directory_url, http_01_port, tls_alpn_01_por
                       config_dir, workspace, force_renew):
 
     new_environ = _prepare_environ(workspace)
-    additional_args = _compute_additional_args(workspace, new_environ, force_renew)
+
+    certbot_path = 'certbot'
+    if 'CERTBOT_BIN_PATH' in os.environ:
+        certbot_path = os.path.join(os.environ['CERTBOT_BIN_PATH'], 'certbot')
+
+    additional_args = _compute_additional_args(workspace, new_environ, force_renew, certbot_path)
+
+    print('CERTBOT_PATH IS {0}'.format(certbot_path))
 
     command = [
-        'certbot',
+        certbot_path,
         '--server', directory_url,
         '--no-verify-ssl',
         '--http-01-port', str(http_01_port),
