@@ -13,8 +13,10 @@ before_install:
   # Install Python on Windows
   - |
     if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
-      nuget.exe install pythonx86 -ExcludeVersion -OutputDirectory /c -Version "$PYTHON_VERSION"
-      export PATH="/c/python/tools:$PATH"
+      cinst --no-progress -y python --version "$PYTHON_VERSION"
+      export PATH="$(powershell -Command '("Process", "Machine" | % {
+        [Environment]::GetEnvironmentVariable("PATH", $_) -Split ";" -Replace "\\$", ""
+      } | Select -Unique | % { cygpath $_ }) -Join ":"')"
     fi
   - export TOX_TESTENV_PASSENV=TRAVIS
 
