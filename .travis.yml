@@ -14,6 +14,10 @@ before_install:
   - |
     if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
       cinst --no-progress -y python --version "$PYTHON_VERSION"
+      # Update PATH manually, see: https://travis-ci.community/t/feedback-from-windows-integration-for-a-cmake-qt-c-python-perl-project/1706
+      echo "$(powershell -Command '("Process", "Machine" | % {
+        [Environment]::GetEnvironmentVariable("PATH", $_) -Split ";" -Replace "\\$", ""
+      } | Select -Unique | % { cygpath $_ }) -Join ":"')"
       export PATH="$(powershell -Command '("Process", "Machine" | % {
         [Environment]::GetEnvironmentVariable("PATH", $_) -Split ";" -Replace "\\$", ""
       } | Select -Unique | % { cygpath $_ }) -Join ":"')"
