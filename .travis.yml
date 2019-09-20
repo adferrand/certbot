@@ -44,13 +44,25 @@ extended-test-suite: &extended-test-suite
 matrix:
   include:
     # Main test suite
-    - env: ACME_SERVER=pebble TOXENV=windows-installer PYTHON_VERSION=3.7.4
+    - env: TOXENV=py35 PYTHON_VERSION=3.5.7
+      os: windows
+      language: bash
+      <<: *not-on-master
+    - env: TOXENV=py37 PYTHON_VERSION=3.7.4
+      os: windows
+      language: bash
+      <<: *not-on-master
+    - env: TOXENV=integration-certbot PYTHON_VERSION=3.7.4
+      os: windows
+      language: bash
+      <<: *not-on-master
+    - env: TOXENV=windows-installer PYTHON_VERSION=3.7.4
       os: windows
       language: bash
       <<: *not-on-master
 
     - python: "2.7"
-      env: ACME_SERVER=pebble TOXENV=integration
+      env: TOXENV=integration
       <<: *not-on-master
 
     # This job is always executed, including on master
