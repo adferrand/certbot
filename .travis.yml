@@ -10,6 +10,12 @@ before_script:
   - 'if [[ "$TOXENV" == *"integration"* ]]; then export PYTEST_ADDOPTS="--numprocesses 4"; fi'
   # Use Travis retry feature for farm tests since they are flaky
   - 'if [[ "$TOXENV" == "travis-test-farm"* ]]; then export TRAVIS_RETRY=travis_retry; fi'
+  # Install Python on Windows
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+      nuget.exe install pythonx86 -ExcludeVersion -OutputDirectory /c "$PYTHON_VERSION"
+      export PATH="/c/python:$PATH"
+    fi
   - export TOX_TESTENV_PASSENV=TRAVIS
 
 # Only build pushes to the master branch, PRs, and branches beginning with
@@ -37,6 +43,11 @@ extended-test-suite: &extended-test-suite
 matrix:
   include:
     # Main test suite
+    - env: ACME_SERVER=pebble TOXENV=windows-installer PYTHON_VERSION=3.7.4
+      os: windows
+      language: bash
+      <<: *not-on-master
+
     - python: "2.7"
       env: ACME_SERVER=pebble TOXENV=integration
       <<: *not-on-master
@@ -269,7 +280,7 @@ install: 'tools/pip_install.py -U codecov tox virtualenv'
 # script command. It is set only to `travis_retry` during farm tests, in
 # order to trigger the Travis retry feature, and compensate the inherent
 # flakiness of these specific tests.
-script: '$TRAVIS_RETRY tox'
+script: '$TRAVIS_RETRY python -m tox'
 
 after_success: '[ "$TOXENV" == "py27-cover" ] && codecov -F linux'
 
