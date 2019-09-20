@@ -13,8 +13,8 @@ before_install:
   # Install Python on Windows
   - |
     if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
-      wget --quiet https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}.exe
-      ./python-${PYTHON_VERSION}.exe -quiet InstallAllUsers=1 TargetDir=C:\\Python
+      wget --quiet https://www.python.org/ftp/python/${PYVER}/python-${PYVER}.exe
+      ./python-${PYVER}.exe -quiet InstallAllUsers=1 TargetDir=C:\\Python
       export PATH="/c/Python/Scripts:/c/Python:$PATH"
     fi
   - export TOX_TESTENV_PASSENV=TRAVIS
@@ -44,19 +44,19 @@ extended-test-suite: &extended-test-suite
 matrix:
   include:
     # Main test suite
-    - env: TOXENV=py35 PYTHON_VERSION=3.5.7
+    - env: TOXENV=py35 PYVER=3.5.4
       os: windows
       language: bash
       <<: *not-on-master
-    - env: TOXENV=py37 PYTHON_VERSION=3.7.4
+    - env: TOXENV=py37 PYVER=3.7.4
       os: windows
       language: bash
       <<: *not-on-master
-    - env: TOXENV=integration-certbot PYTHON_VERSION=3.7.4
+    - env: TOXENV=integration-certbot PYVER=3.7.4
       os: windows
       language: bash
       <<: *not-on-master
-    - env: TOXENV=windows-installer PYTHON_VERSION=3.7.4
+    - env: TOXENV=integration-windows-installer PYVER=3.7.4
       os: windows
       language: bash
       <<: *not-on-master
