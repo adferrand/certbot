@@ -13,14 +13,9 @@ before_install:
   # Install Python on Windows
   - |
     if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
-      cinst --no-progress -y python --version "$PYTHON_VERSION"
-      # Update PATH manually, see: https://travis-ci.community/t/feedback-from-windows-integration-for-a-cmake-qt-c-python-perl-project/1706
-      echo "$(powershell -Command '("Process", "Machine" | % {
-        [Environment]::GetEnvironmentVariable("PATH", $_) -Split ";" -Replace "\\$", ""
-      } | Select -Unique | % { cygpath $_ }) -Join ":"')"
-      export PATH="$(powershell -Command '("Process", "Machine" | % {
-        [Environment]::GetEnvironmentVariable("PATH", $_) -Split ";" -Replace "\\$", ""
-      } | Select -Unique | % { cygpath $_ }) -Join ":"')"
+      wget --quiet https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}.exe
+      ./python-${PYTHON_VERSION}.exe -quiet InstallAllUsers=1 TargetDir=C:\\Python
+      export PATH="/c/Python/Scripts:/c/Python:$PATH"
     fi
   - export TOX_TESTENV_PASSENV=TRAVIS
 
