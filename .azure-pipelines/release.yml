@@ -25,5 +25,7 @@ stages:
               gitHubConnection: certbot-release
               action: create
               target: $(Build.SourceVersion)
+              title: Certbot $(Build.SourceBranch)
               assets: $(Build.ArtifactStagingDirectory)/*.exe
               assetUploadMode: 'replace'
+              addChangeLog: false
