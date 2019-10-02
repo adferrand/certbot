@@ -12,14 +12,18 @@ stages:
       - template: templates/installer-tests.yml
   - stage: release
     jobs:
-      - job: release
+      - job: github
         pool:
           vmImage: vs2017-win2016
         steps:
+          - task: DownloadPipelineArtifact@0
+            inputs:
+              artifactName: WindowsInstaller
+              targetPath: $(Build.ArtifactStagingDirectory)
           - task: GitHubRelease@0
             inputs:
               gitHubConnection: certbot-release
               action: create
               target: $(Build.SourceVersion)
-              assets: $(Build.ArtifactStagingDirectory)/**/*.exe
+              assets: $(Build.ArtifactStagingDirectory)/*.exe
               assetUploadMode: 'replace'
