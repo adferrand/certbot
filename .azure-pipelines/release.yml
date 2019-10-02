@@ -1,0 +1,22 @@
+# Release pipeline to build and deploy Certbot for Windows on release tags
+trigger:
+  tags:
+    include:
+      - v0.*
+pr: none
+
+stages:
+  - stage: build-n-test
+    jobs:
+      - template: templates/tests-suite.yml
+      - template: templates/installer-tests.yml
+  - stage: release
+    jobs:
+      - task: GitHubRelease@0
+        inputs:
+          gitHubConnection: adferrand
+          repositoryName: adferrand/certbot
+          action: create
+          target: $(Build.SourceVersion)
+          assets: $(Build.ArtifactStagingDirectory)/**/*.exe
+          assetUploadMode: 'replace'
