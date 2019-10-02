@@ -15,10 +15,10 @@ jobs:
           sourceFolder: $(System.DefaultWorkingDirectory)/windows-installer/build/nsis
           contents: '*.exe'
           targetFolder: $(Build.ArtifactStagingDirectory)
-      - task: PublishBuildArtifacts@1
+      - task: PublishPipelineArtifacts@1
         inputs:
-          pathtoPublish: $(Build.ArtifactStagingDirectory)
-          artifactName: WindowsInstaller
+          path: $(Build.ArtifactStagingDirectory)
+          artifact: WindowsInstaller
       - script: python windows-installer/install.py
         displayName: Install Certbot
       - script: |
