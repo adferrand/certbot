@@ -10,8 +10,15 @@ jobs:
           addToPath: true
       - script: python windows-installer/construct.py
         displayName: Build Certbot installer
-      - publish: $(System.DefaultWorkingDirectory)/windows-installer/build/nsis
-        artifact: WindowsInstaller
+      - task: CopyFiles@2
+        inputs:
+          sourceFolder: $(System.DefaultWorkingDirectory)/windows-installer/build/nsis
+          contents: '*.exe'
+          targetFolder: $(Build.ArtifactStagingDirectory)
+      - task: PublishBuildArtifacts@1
+        inputs:
+          pathtoPublish: $(Build.ArtifactStagingDirectory)
+          artifactName: WindowsInstaller
       - script: python windows-installer/install.py
         displayName: Install Certbot
       - script: |
