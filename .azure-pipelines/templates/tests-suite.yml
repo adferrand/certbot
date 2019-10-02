@@ -9,7 +9,7 @@ jobs:
           TOXENV: py35
         py37-cover:
           PYTHON_VERSION: 3.7
-          TOXENV: py37
+          TOXENV: py37-cover
         integration-certbot:
           PYTHON_VERSION: 3.7
           TOXENV: integration-certbot
