@@ -16,8 +16,7 @@ stages:
         steps:
           - task: GitHubRelease@0
             inputs:
-              gitHubConnection: adferrand
-              repositoryName: adferrand/certbot
+              gitHubConnection: certbot-release
               action: create
               target: $(Build.SourceVersion)
               assets: $(Build.ArtifactStagingDirectory)/**/*.exe
