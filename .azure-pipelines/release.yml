@@ -14,7 +14,7 @@ stages:
     jobs:
       - job: release
         pool:
-          vmImage: win1803
+          vmImage: vs2015-win2012r2
         steps:
           - task: GitHubRelease@0
             inputs:
