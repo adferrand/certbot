@@ -6,7 +6,7 @@ trigger:
 pr: none
 
 stages:
-  - stage: build-n-test
+  - stage: build_n_test
     jobs:
       - template: templates/tests-suite.yml
       - template: templates/installer-tests.yml
