@@ -1,7 +1,7 @@
 jobs:
   - job: test
     pool:
-      vmImage: vs2017-win2016
+      vmImage: win1803
     strategy:
       matrix:
         py35:
