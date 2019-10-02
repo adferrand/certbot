@@ -15,7 +15,7 @@ jobs:
           sourceFolder: $(System.DefaultWorkingDirectory)/windows-installer/build/nsis
           contents: '*.exe'
           targetFolder: $(Build.ArtifactStagingDirectory)
-      - task: PublishPipelineArtifacts@1
+      - task: PublishPipelineArtifact@1
         inputs:
           path: $(Build.ArtifactStagingDirectory)
           artifact: WindowsInstaller
