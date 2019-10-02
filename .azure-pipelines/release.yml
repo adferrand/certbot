@@ -12,11 +12,13 @@ stages:
       - template: templates/installer-tests.yml
   - stage: release
     jobs:
-      - task: GitHubRelease@0
-        inputs:
-          gitHubConnection: adferrand
-          repositoryName: adferrand/certbot
-          action: create
-          target: $(Build.SourceVersion)
-          assets: $(Build.ArtifactStagingDirectory)/**/*.exe
-          assetUploadMode: 'replace'
+      - job: release
+        steps:
+          - task: GitHubRelease@0
+            inputs:
+              gitHubConnection: adferrand
+              repositoryName: adferrand/certbot
+              action: create
+              target: $(Build.SourceVersion)
+              assets: $(Build.ArtifactStagingDirectory)/**/*.exe
+              assetUploadMode: 'replace'
