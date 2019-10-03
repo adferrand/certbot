@@ -20,7 +20,7 @@ stages:
             inputs:
               artifactName: WindowsInstaller
               targetPath: $(Build.ArtifactStagingDirectory)
-          - script: |
+          - powershell: |
               $certbotVersion = $env:BUILD_SOURCEVERSION -replace "refs/tags/v"
               Write-Host "##vso[task.setvariable variable=CertbotVersion;]$certbotVersion"
             displayName: Configure GitHub release
