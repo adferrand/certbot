@@ -20,16 +20,14 @@ stages:
             inputs:
               artifactName: WindowsInstaller
               targetPath: $(Build.ArtifactStagingDirectory)
-          - powershell: |
-              $certbotVersion = $env:BUILD_SOURCEBRANCH -replace "refs/tags/v"
-              Write-Host "##vso[task.setvariable variable=CertbotVersion;]$certbotVersion"
+          - bash: echo "##vso[task.setvariable variable=ReleaseTitle;]Certbot ${BUILD_SOURCEBRANCH/refs\/tags\/v/}"
             displayName: Configure GitHub release
           - task: GitHubRelease@0
             inputs:
               gitHubConnection: certbot-release
               action: create
               target: $(Build.SourceVersion)
-              title: Certbot $(CertbotVersion)
+              title: $(ReleaseTitle)
               assets: $(Build.ArtifactStagingDirectory)/*.exe
               assetUploadMode: 'replace'
               addChangeLog: false
