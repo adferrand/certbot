@@ -20,7 +20,10 @@ stages:
             inputs:
               artifactName: WindowsInstaller
               targetPath: $(Build.ArtifactStagingDirectory)
-          - bash: echo "##vso[task.setvariable variable=ReleaseTitle;]Certbot ${BUILD_SOURCEBRANCH/refs\/tags\/v/}"
+          - bash: |
+              CERTBOT_VERSION="${BUILD_SOURCEBRANCH/refs\/tags\/v/}"
+              echo "##vso[task.setvariable variable=ReleaseTitle;]Certbot ${CERTBOT_VERSION}"
+              echo "##vso[task.setvariable variable=ReleaseTitle;]$("${BUILD_REPOSITORY_CLEAN}\tools\extract_changelog.py" "${CERTBOT_VERSION}")"
             displayName: Configure GitHub release
           - task: GitHubRelease@0
             inputs:
