@@ -31,6 +31,7 @@ stages:
               action: create
               target: $(Build.SourceVersion)
               title: $(ReleaseTitle)
+              releaseNotesSource: input
               releaseNotes: $(ReleaseNotes)
               assets: $(Build.ArtifactStagingDirectory)/*.exe
               assetUploadMode: 'replace'
