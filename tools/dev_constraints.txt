@@ -16,6 +16,7 @@ cloudflare==1.5.1
 codecov==2.0.15
 configparser==3.7.4
 coverage==4.5.4
+coveralls==1.8.2
 decorator==4.1.2
 dns-lexicon==3.2.1
 dnspython==1.15.0

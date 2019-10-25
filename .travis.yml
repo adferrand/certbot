@@ -289,14 +289,14 @@ addons:
 # virtualenv is listed here explicitly to make sure it is upgraded when
 # CERTBOT_NO_PIN is set to work around failures we've seen when using an older
 # version of virtualenv.
-install: 'tools/pip_install.py -U codecov tox virtualenv'
+install: 'tools/pip_install.py -U coveralls tox virtualenv'
 # Most of the time TRAVIS_RETRY is an empty string, and has no effect on the
 # script command. It is set only to `travis_retry` during farm tests, in
 # order to trigger the Travis retry feature, and compensate the inherent
 # flakiness of these specific tests.
 script: '$TRAVIS_RETRY tox'
 
-after_success: '[ "$TOXENV" == "py27-cover" ] && codecov -F linux'
+after_success: '[ "$TOXENV" == "py27-cover" ] && coveralls'
 
 notifications:
   email: false
