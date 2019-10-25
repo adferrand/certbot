@@ -17,6 +17,8 @@ to the Sphinx generated docs is provided below.
 
 # Certbot Contributing Guide
 
+Test
+
 Hi! Welcome to the Certbot project. We look forward to collaborating with you.
 
 If you're reporting a bug in Certbot, please make sure to include:
