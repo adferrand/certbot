@@ -59,9 +59,9 @@ install_requires = [
 # However environment markers are supported only with setuptools >= 36.2.
 # So this dependency is not added for old Linux distributions with old setuptools,
 # in order to allow these systems to build certbot from sources.
-pywin32_req = 'pywin32>=225'  # do not forget to edit pywin32 dependency accordingly in windows-installer/construct.py
+windows_req = ['pywin32>=225', 'pythonnet>=2.4.0']  # do not forget to edit pywin32 dependency accordingly in windows-installer/construct.py
 if StrictVersion(setuptools_version) >= StrictVersion('36.2'):
-    install_requires.append(pywin32_req + " ; sys_platform == 'win32'")
+    install_requires.extend(['{0} ; sys_platform == "win32"'.format(req) for req in windows_req])
 elif 'bdist_wheel' in sys.argv[1:]:
     raise RuntimeError('Error, you are trying to build certbot wheels using an old version '
                        'of setuptools. Version 36.2+ of setuptools is required.')
@@ -69,7 +69,7 @@ elif os.name == 'nt':
     # This branch exists to improve this package's behavior on Windows. Without
     # it, if the sdist is installed on Windows with an old version of
     # setuptools, pywin32 will not be specified as a dependency.
-    install_requires.append(pywin32_req)
+    install_requires.extend(windows_req)
 
 dev_extras = [
     'astroid==1.6.5',

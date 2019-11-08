@@ -71,6 +71,7 @@ pytest-rerunfailures==4.2
 python-dateutil==2.6.1
 python-digitalocean==1.11
 pywin32==225
+pythonnet==2.4.0
 PyYAML==3.13
 repoze.sphinx.autointerface==0.8
 requests-file==1.4.2
