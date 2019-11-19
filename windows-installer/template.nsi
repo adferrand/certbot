@@ -75,6 +75,14 @@ SectionEnd
 [% block sections %]
 
 Section "!${PRODUCT_NAME}" sec_app
+  ; CERTBOT CUSTOM BEGIN
+  ; Try to uninstall first previous version
+  ReadRegStr $R0 SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "UninstallString"
+  StrCmp $R0 "" 0 +2
+  Goto +2
+  ExecWait '"$R0" /S _?=$INSTDIR'
+  Sleep 15000
+  ; CERTBOT CUSTOM END
   SetRegView [[ib.py_bitness]]
   SectionIn RO
   File ${PRODUCT_ICON}
