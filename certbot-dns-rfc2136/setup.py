@@ -1,14 +1,16 @@
 from setuptools import setup
 from setuptools import find_packages
+from setuptools.command.test import test as TestCommand
+import sys
 
 
-version = '0.36.0.dev0'
+version = '1.0.0.dev0'
 
 # Remember to update local-oldest-requirements.txt when changing the minimum
 # acme/certbot version.
 install_requires = [
     'acme>=0.29.0',
-    'certbot>=0.34.0',
+    'certbot>=0.39.0',
     'dnspython',
     'mock',
     'setuptools',
@@ -19,6 +21,20 @@ docs_extras = [
     'Sphinx>=1.0',  # autodoc_member_order = 'bysource', autodoc_default_flags
     'sphinx_rtd_theme',
 ]
+
+class PyTest(TestCommand):
+    user_options = []
+
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+        self.pytest_args = ''
+
+    def run_tests(self):
+        import shlex
+        # import here, cause outside the eggs aren't loaded
+        import pytest
+        errno = pytest.main(shlex.split(self.pytest_args))
+        sys.exit(errno)
 
 setup(
     name='certbot-dns-rfc2136',
@@ -43,6 +59,7 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Security',
         'Topic :: System :: Installation/Setup',
@@ -59,8 +76,10 @@ setup(
     },
     entry_points={
         'certbot.plugins': [
-            'dns-rfc2136 = certbot_dns_rfc2136.dns_rfc2136:Authenticator',
+            'dns-rfc2136 = certbot_dns_rfc2136._internal.dns_rfc2136:Authenticator',
         ],
     },
+    tests_require=["pytest"],
     test_suite='certbot_dns_rfc2136',
+    cmdclass={"test": PyTest},
 )

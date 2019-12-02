@@ -1,10 +1,11 @@
 """Module to handle the context of integration tests."""
+import logging
 import os
 import shutil
 import sys
 import tempfile
 
-from certbot_integration_tests.utils import misc, certbot_call
+from certbot_integration_tests.utils import certbot_call
 
 
 class IntegrationTestsContext(object):
@@ -30,7 +31,10 @@ class IntegrationTestsContext(object):
 
         self.workspace = tempfile.mkdtemp()
         self.config_dir = os.path.join(self.workspace, 'conf')
-        self.hook_probe = tempfile.mkstemp(dir=self.workspace)[1]
+
+        probe = tempfile.mkstemp(dir=self.workspace)
+        os.close(probe[0])
+        self.hook_probe = probe[1]
 
         self.manual_dns_auth_hook = (
             '{0} -c "import os; import requests; import json; '

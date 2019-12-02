@@ -12,7 +12,7 @@ DEFAULT_PACKAGES = [
     'certbot_dns_sakuracloud', 'certbot_nginx', 'letshelp_certbot']
 
 COVER_THRESHOLDS = {
-    'certbot': {'linux': 98, 'windows': 93},
+    'certbot': {'linux': 96, 'windows': 96},
     'acme': {'linux': 100, 'windows': 99},
     'certbot_apache': {'linux': 100, 'windows': 100},
     'certbot_dns_cloudflare': {'linux': 98, 'windows': 98},
@@ -47,8 +47,8 @@ def cover(package):
             .format(pkg_dir)))
         return
 
-    subprocess.check_call([sys.executable, '-m', 'pytest', '--pyargs',
-                           '--cov', pkg_dir, '--cov-append', '--cov-report=', package])
+    subprocess.check_call([sys.executable, '-m', 'pytest',
+                           '--cov', pkg_dir, '--cov-append', '--cov-report=', pkg_dir])
     subprocess.check_call([
         sys.executable, '-m', 'coverage', 'report', '--fail-under', str(threshold), '--include',
         '{0}/*'.format(pkg_dir), '--show-missing'])
@@ -56,9 +56,9 @@ def cover(package):
 
 def main():
     description = """
-This script is used by tox.ini (and thus by Travis CI and AppVeyor) in order
-to generate separate stats for each package. It should be removed once those
-packages are moved to a separate repo.
+This script is used by tox.ini (and thus by Travis CI and Azure Pipelines) in
+order to generate separate stats for each package. It should be removed once
+those packages are moved to a separate repo.
 
 Option -e makes sure we fail fast and don't submit to codecov."""
     parser = argparse.ArgumentParser(description=description)

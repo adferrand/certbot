@@ -10,9 +10,10 @@ import zope.component
 from acme import messages
 
 import certbot.tests.util as test_util
-from certbot import account
+from certbot._internal import account
 from certbot import errors
 from certbot.compat import os
+from certbot.compat import filesystem
 from certbot.display import ops
 from certbot.display import util as display_util
 
@@ -93,7 +94,7 @@ class ChooseAccountTest(test_util.TempDirTestCase):
                                                                False))
 
         self.account_keys_dir = os.path.join(self.tempdir, "keys")
-        os.makedirs(self.account_keys_dir, 0o700)
+        filesystem.makedirs(self.account_keys_dir, 0o700)
 
         self.config = mock.MagicMock(
             accounts_dir=self.tempdir,
@@ -353,7 +354,6 @@ class ChooseNamesTest(unittest.TestCase):
 
 
 class SuccessInstallationTest(unittest.TestCase):
-    # pylint: disable=too-few-public-methods
     """Test the success installation message."""
     @classmethod
     def _call(cls, names):
@@ -375,7 +375,6 @@ class SuccessInstallationTest(unittest.TestCase):
 
 
 class SuccessRenewalTest(unittest.TestCase):
-    # pylint: disable=too-few-public-methods
     """Test the success renewal message."""
     @classmethod
     def _call(cls, names):
@@ -396,7 +395,6 @@ class SuccessRenewalTest(unittest.TestCase):
             self.assertTrue(name in arg)
 
 class SuccessRevocationTest(unittest.TestCase):
-    # pylint: disable=too-few-public-methods
     """Test the success revocation message."""
     @classmethod
     def _call(cls, path):

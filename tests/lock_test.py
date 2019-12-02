@@ -19,8 +19,9 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization, hashes  # type: ignore
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from certbot import lock
+from certbot._internal import lock
 from certbot import util
+from certbot.compat import filesystem
 
 from certbot.tests import util as test_util
 
@@ -92,7 +93,7 @@ def set_up_dirs():
     nginx_dir = os.path.join(temp_dir, 'nginx')
 
     for directory in (config_dir, logs_dir, work_dir, nginx_dir,):
-        os.mkdir(directory)
+        filesystem.mkdir(directory)
 
     test_util.make_lineage(config_dir, 'sample-renewal.conf')
     set_up_nginx_dir(nginx_dir)

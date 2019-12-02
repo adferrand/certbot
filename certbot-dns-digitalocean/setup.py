@@ -1,14 +1,16 @@
 from setuptools import setup
 from setuptools import find_packages
+from setuptools.command.test import test as TestCommand
+import sys
 
 
-version = '0.36.0.dev0'
+version = '1.0.0.dev0'
 
 # Remember to update local-oldest-requirements.txt when changing the minimum
 # acme/certbot version.
 install_requires = [
     'acme>=0.29.0',
-    'certbot>=0.34.0',
+    'certbot>=0.39.0',
     'mock',
     'python-digitalocean>=1.11',
     'setuptools',
@@ -20,6 +22,20 @@ docs_extras = [
     'Sphinx>=1.0',  # autodoc_member_order = 'bysource', autodoc_default_flags
     'sphinx_rtd_theme',
 ]
+
+class PyTest(TestCommand):
+    user_options = []
+
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+        self.pytest_args = ''
+
+    def run_tests(self):
+        import shlex
+        # import here, cause outside the eggs aren't loaded
+        import pytest
+        errno = pytest.main(shlex.split(self.pytest_args))
+        sys.exit(errno)
 
 setup(
     name='certbot-dns-digitalocean',
@@ -44,6 +60,7 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Security',
         'Topic :: System :: Installation/Setup',
@@ -60,8 +77,10 @@ setup(
     },
     entry_points={
         'certbot.plugins': [
-            'dns-digitalocean = certbot_dns_digitalocean.dns_digitalocean:Authenticator',
+            'dns-digitalocean = certbot_dns_digitalocean._internal.dns_digitalocean:Authenticator',
         ],
     },
+    tests_require=["pytest"],
     test_suite='certbot_dns_digitalocean',
+    cmdclass={"test": PyTest},
 )
