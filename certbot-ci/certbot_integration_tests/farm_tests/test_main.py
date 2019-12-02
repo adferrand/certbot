@@ -43,7 +43,6 @@ class IntegrationTestsContext(object):
                    '-w', '/workspace'.format(self._workspace),
                    '-p', '{0}:{0}'.format(http_01_port),
                    '-p', '{0}:{0}'.format(tls_alpn_01_port),
-                   '--network', 'host',
                    '{0}_letstest'.format(self._request.param)]
 
         return subprocess.check_output(command, universal_newlines=True).strip()
