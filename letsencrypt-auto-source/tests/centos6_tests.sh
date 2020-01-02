@@ -43,8 +43,6 @@ fi
 "$LE_AUTO" --no-self-upgrade -n --version > /dev/null 2> /dev/null
 
 # ensure python 3 isn't installed
-python3 --version 2> /dev/null
-RESULT=$?
 if python3 --version 2> /dev/null; then
   echo "letsencrypt-auto installed Python3 even though Python2.7 is present."
   exit 1
@@ -54,8 +52,6 @@ fi
 echo "PASSED: Did not upgrade to Python3 when Python2.7 is present."
 
 # ensure python2.7 isn't available
-python2.7 --version 2> /dev/null
-RESULT=$?
 if python2.7 --version 2> /dev/null; then
   echo "Python2.7 is still available."
   exit 1
