@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eo pipefail
+set -e
 # Start by making sure your system is up-to-date:
 yum update -y > /dev/null
 yum install -y centos-release-scl > /dev/null
@@ -12,7 +12,6 @@ echo ""
 # we're going to modify env variables, so do this in a subshell
 (
 # ensure CentOS6 32bits is not supported anymore, and so certbot is not installed
-set +o pipefail
 export UNAME_FAKE_32BITS=true
 if ! "$LE_AUTO" 2>&1 | grep -q "Certbot cannot be installed."; then
   echo "On CentOS 32 bits, certbot-auto installed certbot."
@@ -63,12 +62,10 @@ if python2.7 --version 2> /dev/null; then
 fi
 
 # Skip self upgrade due to Python 3 not being available.
-set +o pipefail
 if ! "$LE_AUTO" 2>&1 | grep -q "WARNING: couldn't find Python"; then
   echo "Python upgrade failure warning not printed!"
   exit 1
 fi
-set -o pipefail
 
 # bootstrap, this time installing python3
 "$LE_AUTO" --no-self-upgrade -n > /dev/null 2> /dev/null
@@ -99,7 +96,6 @@ if ! "$LE_AUTO" --version > /dev/null 2> /dev/null; then
   echo "On CentOS 6 32 bits, certbot-auto failed to run installed certbot instance."
   exit 1
 fi
-set +o pipefail
 if ! "$LE_AUTO" --version 2>&1 | grep -q "Certbot will no longer receive updates."; then
   echo "On CentOS 6 32 bits, certbot-auto upgraded installed certbot instance."
   exit 1
@@ -121,13 +117,11 @@ if ! "$LE_AUTO" --version > /dev/null 2> /dev/null; then
   echo "On CentOS 6 32 bits, certbot-auto failed to run installed certbot instance in the old venv path."
   exit 1
 fi
-set +o pipefail
 if ! "$LE_AUTO" 2>&1 | grep -q "Certbot will no longer receive updates."; then
   echo "On CentOS 6 32 bits, certbot-auto upgraded installed certbot in the old venv path."
   exit 1
 fi
 )
-set -o pipefail
 
 echo "PASSED: On CentOS 6 32 bits, certbot-auto refused to install/upgrade certbot."
 
