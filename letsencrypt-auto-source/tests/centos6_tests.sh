@@ -44,6 +44,7 @@ fi
 
 echo 4
 # bootstrap, but don't install python 3.
+"$LE_AUTO" --no-self-upgrade -n
 "$LE_AUTO" --no-self-upgrade -n > /dev/null 2> /dev/null
 
 echo 5
