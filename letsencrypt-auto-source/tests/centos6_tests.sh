@@ -23,17 +23,14 @@ echo "PASSED: On CentOS 6 32 bits, certbot-auto refused to install certbot."
 
 # we're going to modify env variables, so do this in a subshell
 (
-echo 1
 source /opt/rh/python27/enable
 
 # ensure python 3 isn't installed
-echo 2
 if python3 --version 2> /dev/null; then
   echo "Python3 is already installed."
   exit 1
 fi
 
-echo 3
 # ensure python2.7 is available
 python2.7 --version 2> /dev/null
 RESULT=$?
@@ -42,12 +39,9 @@ if ! python2.7 --version 2> /dev/null; then
   exit 1
 fi
 
-echo 4
 # bootstrap, but don't install python 3.
-"$LE_AUTO" --no-self-upgrade -n
-"$LE_AUTO" --no-self-upgrade -n > /dev/null 2> /dev/null
+"$LE_AUTO" --no-self-upgrade -n --version > /dev/null 2> /dev/null
 
-echo 5
 # ensure python 3 isn't installed
 python3 --version 2> /dev/null
 RESULT=$?
