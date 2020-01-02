@@ -59,6 +59,7 @@ echo "PASSED: Did not upgrade to Python3 when Python2.7 is present."
 # ensure python2.7 isn't available
 python2.7 --version 2> /dev/null
 RESULT=$?
+echo $RESULT
 if [ $RESULT -eq 0 ]; then
   echo "Python2.7 is still available."
   exit 1
