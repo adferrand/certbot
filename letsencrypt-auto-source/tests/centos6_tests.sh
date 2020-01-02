@@ -27,9 +27,7 @@ echo "PASSED: On CentOS 6 32 bits, certbot-auto refused to install certbot."
 source /opt/rh/python27/enable
 
 # ensure python 3 isn't installed
-python3 --version 2> /dev/null
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
+if python3 --version 2> /dev/null; then
   echo "Python3 is already installed."
   exit 1
 fi
@@ -37,8 +35,8 @@ fi
 # ensure python2.7 is available
 python2.7 --version 2> /dev/null
 RESULT=$?
-if [ $RESULT -ne 0 ]; then
-  echo "Python3 is not available."
+if ! python2.7 --version 2> /dev/null; then
+  echo "Python2.7 is not available."
   exit 1
 fi
 
@@ -48,7 +46,7 @@ fi
 # ensure python 3 isn't installed
 python3 --version 2> /dev/null
 RESULT=$?
-if [ $RESULT -eq 0 ]; then
+if python3 --version 2> /dev/null; then
   echo "letsencrypt-auto installed Python3 even though Python2.7 is present."
   exit 1
 fi
@@ -59,25 +57,24 @@ echo "PASSED: Did not upgrade to Python3 when Python2.7 is present."
 # ensure python2.7 isn't available
 python2.7 --version 2> /dev/null
 RESULT=$?
-echo $RESULT
-if [ $RESULT -eq 0 ]; then
+if python2.7 --version 2> /dev/null; then
   echo "Python2.7 is still available."
   exit 1
 fi
 
 # Skip self upgrade due to Python 3 not being available.
+set +o pipefail
 if ! "$LE_AUTO" 2>&1 | grep -q "WARNING: couldn't find Python"; then
   echo "Python upgrade failure warning not printed!"
   exit 1
 fi
+set -o pipefail
 
 # bootstrap, this time installing python3
 "$LE_AUTO" --no-self-upgrade -n > /dev/null 2> /dev/null
 
 # ensure python 3 is installed
-python3 --version > /dev/null
-RESULT=$?
-if [ $RESULT -ne 0 ]; then
+if ! python3 --version > /dev/null; then
   echo "letsencrypt-auto failed to install Python3 when only Python2.6 is present."
   exit 1
 fi
@@ -102,6 +99,7 @@ if ! "$LE_AUTO" --version > /dev/null 2> /dev/null; then
   echo "On CentOS 6 32 bits, certbot-auto failed to run installed certbot instance."
   exit 1
 fi
+set +o pipefail
 if ! "$LE_AUTO" --version 2>&1 | grep -q "Certbot will no longer receive updates."; then
   echo "On CentOS 6 32 bits, certbot-auto upgraded installed certbot instance."
   exit 1
@@ -123,11 +121,13 @@ if ! "$LE_AUTO" --version > /dev/null 2> /dev/null; then
   echo "On CentOS 6 32 bits, certbot-auto failed to run installed certbot instance in the old venv path."
   exit 1
 fi
+set +o pipefail
 if ! "$LE_AUTO" 2>&1 | grep -q "Certbot will no longer receive updates."; then
   echo "On CentOS 6 32 bits, certbot-auto upgraded installed certbot in the old venv path."
   exit 1
 fi
 )
+set -o pipefail
 
 echo "PASSED: On CentOS 6 32 bits, certbot-auto refused to install/upgrade certbot."
 
