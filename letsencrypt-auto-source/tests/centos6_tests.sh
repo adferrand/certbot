@@ -64,7 +64,7 @@ if ! "$LE_AUTO" 2>&1 | grep -q "WARNING: couldn't find Python"; then
 fi
 
 # bootstrap, this time installing python3
-"$LE_AUTO" --no-self-upgrade -n > /dev/null 2> /dev/null
+"$LE_AUTO" --no-self-upgrade -n --version > /dev/null 2> /dev/null
 
 # ensure python 3 is installed
 if ! python3 --version > /dev/null; then
