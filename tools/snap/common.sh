@@ -26,6 +26,28 @@ ResolveArch() {
     esac
 }
 
+# Super temporary and hacky method to get a very precise version of the snapcraft docker
+# to avoid failures on QEMU arm64 with recent versions of the docker.
+# Usage: GetSnapcraftDockerTag [amd64|arm64|armhf]
+GetSnapcraftDockerTag() {
+  local SNAP_ARCH=$1
+
+  case "${SNAP_ARCH}" in
+        "amd64")
+            echo ""
+            ;;
+        "arm64")
+            echo ""
+            ;;
+        "armhf")
+            echo ""
+            ;;
+        "*")
+            echo "Not supported build architecture '$1'." >&2
+            exit 1
+    esac
+}
+
 # Downloads QEMU static binary file for architecture
 # Usage: DownloadQemuStatic [x86_64|aarch64|arm] DEST_DIR
 DownloadQemuStatic() {
