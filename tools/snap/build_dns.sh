@@ -69,5 +69,5 @@ docker run \
   -w "/certbot" \
   -e "DNS_PLUGINS=${DNS_PLUGINS}" \
   -e "PIP_EXTRA_INDEX_URL=http://localhost:8080" \
-  "adferrand/snapcraft:${DOCKER_ARCH}-stable" \
+  "$(GetSnapcraftDockerImage "${SNAP_ARCH}")" \
   /script.sh

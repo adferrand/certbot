@@ -37,5 +37,5 @@ docker run \
   -v "${CERTBOT_DIR}:/certbot" \
   -w "/certbot" \
   -e "PIP_EXTRA_INDEX_URL=http://localhost:8080" \
-  "adferrand/snapcraft:${DOCKER_ARCH}-stable" \
+  "$(GetSnapcraftDockerImage "${SNAP_ARCH}")" \
   bash -c "snapcraft clean && snapcraft"
