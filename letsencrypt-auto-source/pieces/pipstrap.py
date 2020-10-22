@@ -78,9 +78,9 @@ PACKAGES = maybe_argparse + [
      'pip-{0}.tar.gz'.format(PIP_VERSION),
      '09f243e1a7b461f654c26a725fa373211bb7ff17a9300058b205c61658ca940d'),
     # This version of setuptools has only optional dependencies:
-    ('37/1b/b25507861991beeade31473868463dad0e58b1978c209de27384ae541b0b/'
-     'setuptools-40.6.3.zip',
-     '3b474dad69c49f0d2d86696b68105f3a6f195f7ab655af12ef9a9c326d2b08f8'),
+    ('a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/'
+     'setuptools-50.3.2.zip',
+     'ed0519d27a243843b05d82a5e9d01b0b083d9934eaa3d02779a23da18077bd3c'),
     ('c9/1d/bd19e691fd4cfe908c76c429fe6e4436c9e83583c4414b54f6c85471954a/'
      'wheel-0.29.0.tar.gz',
      '1ebb8ad7e26b448e9caa4773d2357849bf80ff9e313964bcaf79cbf0201a1648')
