@@ -3,6 +3,11 @@ set -xe
 
 PUBLIC_HOSTNAME="test.${LE_SUFFIX}"
 
+/certbot/tests/letstest/scripts/bootstrap_os_packages.sh
+python3 -m venv /workspace/venv
+/workspace/venv/bin/python /certbot/tools/pipstrap.py
+/workspace/venv/bin/python /certbot/tools/pip_install_editable.py /certbot/acme /certbot/certbot /certbot/certbot-apache
+
 if apt-get -v >/dev/null 2>&1; then
   apt-get update
   apt-get -y --no-upgrade install apache2
@@ -34,11 +39,6 @@ elif yum --version >/dev/null 2>&1; then
     CustomLog /var/www/${PUBLIC_HOSTNAME}/requests.log combined
 </VirtualHost>""" >> "/etc/httpd/conf.d/${PUBLIC_HOSTNAME}.conf"
 fi
-
-/certbot/tests/letstest/scripts/bootstrap_os_packages.sh
-python3 -m venv /workspace/venv
-/workspace/venv/bin/python /certbot/tools/pipstrap.py
-/workspace/venv/bin/python /certbot/tools/pip_install_editable.py /certbot/acme /certbot/certbot /certbot/certbot-apache
 
 /workspace/venv/bin/certbot \
   -v \
