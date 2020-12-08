@@ -25,4 +25,5 @@ python3 -m venv /workspace/venv
   --register-unsafely-without-email \
   --domain "${PUBLIC_HOSTNAME}" \
   --server "${DIRECTORY_URL}" \
+  --no-verify-ssl \
   --http-01-port "${HTTP_01_PORT}"
