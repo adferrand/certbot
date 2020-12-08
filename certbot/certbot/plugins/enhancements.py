@@ -1,10 +1,12 @@
 """New interface style Certbot enhancements"""
 import abc
+
 import six
 
+from acme.magic_typing import Any
+from acme.magic_typing import Dict
+from acme.magic_typing import List
 from certbot._internal import constants
-
-from acme.magic_typing import Dict, List, Any  # pylint: disable=unused-import, no-name-in-module
 
 ENHANCEMENTS = ["redirect", "ensure-http-header", "ocsp-stapling"]
 """List of possible :class:`certbot.interfaces.IInstaller`
@@ -151,7 +153,7 @@ class AutoHSTSEnhancement(object):
         :type lineage: certbot.interfaces.RenewableCert
 
         :param domains: List of domains in certificate to enhance
-        :type domains: str
+        :type domains: `list` of `str`
         """
 
 # This is used to configure internal new style enhancements in Certbot. These

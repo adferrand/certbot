@@ -4,14 +4,51 @@ import errno
 import sys
 import unittest
 
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock
 import six
 from six.moves import reload_module  # pylint: disable=import-error
 
-import certbot.tests.util as test_util
 from certbot import errors
-from certbot.compat import os
 from certbot.compat import filesystem
+from certbot.compat import os
+import certbot.tests.util as test_util
+
+
+class EnvNoSnapForExternalCallsTest(unittest.TestCase):
+    """Tests for certbot.util.env_no_snap_for_external_calls."""
+    @classmethod
+    def _call(cls):
+        from certbot.util import env_no_snap_for_external_calls
+        return env_no_snap_for_external_calls()
+
+    def test_removed(self):
+        original_path = os.environ['PATH']
+        env_copy_dict = os.environ.copy()
+        env_copy_dict['PATH'] = 'RANDOM_NONSENSE_GARBAGE/blah/blah:' + original_path
+        env_copy_dict['SNAP'] = 'RANDOM_NONSENSE_GARBAGE'
+        env_copy_dict['CERTBOT_SNAPPED'] = 'True'
+        with mock.patch('certbot.compat.os.environ.copy', return_value=env_copy_dict):
+            self.assertEqual(self._call()['PATH'], original_path)
+
+    def test_noop(self):
+        env_copy_dict_unmodified = os.environ.copy()
+        env_copy_dict_unmodified['PATH'] = 'RANDOM_NONSENSE_GARBAGE/blah/blah:' \
+            + env_copy_dict_unmodified['PATH']
+        env_copy_dict = env_copy_dict_unmodified.copy()
+        with mock.patch('certbot.compat.os.environ.copy', return_value=env_copy_dict):
+            # contains neither necessary key
+            env_copy_dict.pop('SNAP', None)
+            env_copy_dict.pop('CERTBOT_SNAPPED', None)
+            self.assertEqual(self._call()['PATH'], env_copy_dict_unmodified['PATH'])
+            # contains only one necessary key
+            env_copy_dict['SNAP'] = 'RANDOM_NONSENSE_GARBAGE'
+            self.assertEqual(self._call()['PATH'], env_copy_dict_unmodified['PATH'])
+            del env_copy_dict['SNAP']
+            env_copy_dict['CERTBOT_SNAPPED'] = 'True'
+            self.assertEqual(self._call()['PATH'], env_copy_dict_unmodified['PATH'])
 
 
 class RunScriptTest(unittest.TestCase):
@@ -90,7 +127,7 @@ class LockDirUntilExit(test_util.TempDirTestCase):
         from certbot import util
         # Despite lock_dir_until_exit has been called twice to subdir, its lock should have been
         # added only once. So we expect to have two lock references: for self.tempdir and subdir
-        self.assertTrue(len(util._LOCKS) == 2)  # pylint: disable=protected-access
+        self.assertEqual(len(util._LOCKS), 2)  # pylint: disable=protected-access
         registered_func()  # Exception should not be raised
         # Logically, logger.debug, that would be invoked in case of unlock failure,
         # should never been called.
@@ -579,7 +616,7 @@ class AtexitRegisterTest(unittest.TestCase):
             with mock.patch('certbot.util.atexit') as mock_atexit:
                 self._call(self.func, *self.args, **self.kwargs)
 
-            # _INITAL_PID must be mocked when calling atexit_func
+            # _INITIAL_PID must be mocked when calling atexit_func
             self.assertTrue(mock_atexit.register.called)
             args, kwargs = mock_atexit.register.call_args
             atexit_func = args[0]

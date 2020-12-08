@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 import contextlib
 import ctypes
+import os
+import shutil
 import struct
 import subprocess
-import os
 import sys
-import shutil
 import tempfile
 import time
 
 PYTHON_VERSION = (3, 7, 4)
 PYTHON_BITNESS = 32
-PYWIN32_VERSION = 225  # do not forget to edit pywin32 dependency accordingly in setup.py
+PYWIN32_VERSION = 227  # do not forget to edit pywin32 dependency accordingly in setup.py
 NSIS_VERSION = '3.04'
 
 
@@ -54,9 +54,9 @@ def _compile_wheels(repo_path, build_path, venv_python):
 def _prepare_build_tools(venv_path, venv_python, repo_path):
     print('Prepare build tools')
     subprocess.check_call([sys.executable, '-m', 'venv', venv_path])
-    subprocess.check_call([venv_python, os.path.join(repo_path, 'letsencrypt-auto-source', 'pieces', 'pipstrap.py')])
+    subprocess.check_call([venv_python, os.path.join(repo_path, 'tools', 'pipstrap.py')])
     subprocess.check_call([venv_python, os.path.join(repo_path, 'tools', 'pip_install.py'), 'pynsist'])
-    subprocess.check_call(['choco', 'upgrade', '-y', 'nsis', '--version', NSIS_VERSION])
+    subprocess.check_call(['choco', 'upgrade', '--allow-downgrade', '-y', 'nsis', '--version', NSIS_VERSION])
 
 
 @contextlib.contextmanager
@@ -123,6 +123,8 @@ imp.load_dynamic('pythoncom', pcom)
     certbot_version = subprocess.check_output([sys.executable, '-c', 'import certbot; print(certbot.__version__)'],
                                               universal_newlines=True, cwd=certbot_pkg_path).strip()
 
+    # If we change the installer name from `certbot-beta-installer-win32.exe`, it should
+    # also be changed in tools/create_github_release.py
     with open(installer_cfg_path, 'w') as file_h:
         file_h.write('''\
 [Application]
@@ -153,7 +155,7 @@ extra_preamble=pywin32_paths.py
 '''.format(certbot_version=certbot_version,
            installer_suffix='win_amd64' if PYTHON_BITNESS == 64 else 'win32',
            python_bitness=PYTHON_BITNESS,
-           python_version='.'.join([str(item) for item in PYTHON_VERSION])))
+           python_version='.'.join(str(item) for item in PYTHON_VERSION)))
 
         return installer_cfg_path
 
@@ -175,7 +177,7 @@ def _prepare_environment():
 
 
 if __name__ == '__main__':
-    if not os.name == 'nt':
+    if os.name != 'nt':
         raise RuntimeError('This script must be run under Windows.')
 
     if ctypes.windll.shell32.IsUserAnAdmin() == 0:
@@ -184,7 +186,7 @@ if __name__ == '__main__':
 
     if sys.version_info[:2] != PYTHON_VERSION[:2]:
         raise RuntimeError('This script must be run with Python {0}'
-                           .format('.'.join([str(item) for item in PYTHON_VERSION[0:2]])))
+                           .format('.'.join(str(item) for item in PYTHON_VERSION[0:2])))
 
     if struct.calcsize('P') * 8 != PYTHON_BITNESS:
         raise RuntimeError('This script must be run with a {0} bit version of Python.'

@@ -1,9 +1,10 @@
 """Certbot client interfaces."""
 import abc
+
 import six
 import zope.interface
 
-# pylint: disable=no-self-argument,no-method-argument,no-init,inherit-non-class
+# pylint: disable=no-self-argument,no-method-argument,inherit-non-class
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -197,6 +198,13 @@ class IConfig(zope.interface.Interface):
         "register multiple emails, ex: u1@example.com,u2@example.com. "
         "(default: Ask).")
     rsa_key_size = zope.interface.Attribute("Size of the RSA key.")
+    elliptic_curve = zope.interface.Attribute(
+        "The SECG elliptic curve name to use. Please see RFC 8446 "
+        "for supported values."
+    )
+    key_type = zope.interface.Attribute(
+        "Type of generated private key"
+        "(Only *ONE* per invocation can be provided at this time)")
     must_staple = zope.interface.Attribute(
         "Adds the OCSP Must Staple extension to the certificate. "
         "Autoconfigures OCSP Stapling for supported setups "
@@ -252,6 +260,13 @@ class IConfig(zope.interface.Interface):
     disable_renew_updates = zope.interface.Attribute(
         "If updates provided by installer enhancements when Certbot is being run"
         " with \"renew\" verb should be disabled.")
+
+    preferred_chain = zope.interface.Attribute(
+        "If the CA offers multiple certificate chains, prefer the chain with "
+        "an issuer matching this Subject Common Name. If no match, the default "
+        "offered chain will be used."
+    )
+
 
 class IInstaller(IPlugin):
     """Generic Certbot Installer Interface.

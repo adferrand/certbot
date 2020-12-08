@@ -5,19 +5,20 @@ import datetime
 import json
 import unittest
 
-from six.moves import http_client  # pylint: disable=import-error
-
 import josepy as jose
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock # type: ignore
 import OpenSSL
 import requests
+from six.moves import http_client  # pylint: disable=import-error
 
 from acme import challenges
 from acme import errors
 from acme import jws as acme_jws
 from acme import messages
-from acme.magic_typing import Dict # pylint: disable=unused-import, no-name-in-module
-
+from acme.mixins import VersionedLEACMEMixin
 import messages_test
 import test_util
 
@@ -63,7 +64,7 @@ class ClientTestBase(unittest.TestCase):
         self.contact = ('mailto:cert-admin@example.com', 'tel:+12025551212')
         reg = messages.Registration(
             contact=self.contact, key=KEY.public_key())
-        the_arg = dict(reg) # type: Dict
+        the_arg = dict(reg)  # type: Dict
         self.new_reg = messages.NewRegistration(**the_arg)
         self.regr = messages.RegistrationResource(
             body=reg, uri='https://www.letsencrypt-demo.org/acme/reg/1')
@@ -262,7 +263,7 @@ class BackwardsCompatibleClientV2Test(ClientTestBase):
         with mock.patch('acme.client.ClientV2') as mock_client:
             client = self._init()
             client.finalize_order(mock_orderr, mock_deadline)
-            mock_client().finalize_order.assert_called_once_with(mock_orderr, mock_deadline)
+            mock_client().finalize_order.assert_called_once_with(mock_orderr, mock_deadline, False)
 
     def test_revoke(self):
         self.response.json.return_value = DIRECTORY_V1.to_json()
@@ -841,6 +842,32 @@ class ClientV2Test(ClientTestBase):
         deadline = datetime.datetime.now() - datetime.timedelta(seconds=60)
         self.assertRaises(errors.TimeoutError, self.client.finalize_order, self.orderr, deadline)
 
+    def test_finalize_order_alt_chains(self):
+        updated_order = self.order.update(
+            certificate='https://www.letsencrypt-demo.org/acme/cert/',
+        )
+        updated_orderr = self.orderr.update(body=updated_order,
+                                            fullchain_pem=CERT_SAN_PEM,
+                                            alternative_fullchains_pem=[CERT_SAN_PEM,
+                                                                        CERT_SAN_PEM])
+        self.response.json.return_value = updated_order.to_json()
+        self.response.text = CERT_SAN_PEM
+        self.response.headers['Link'] ='<https://example.com/acme/cert/1>;rel="alternate", ' + \
+            '<https://example.com/dir>;rel="index", ' + \
+            '<https://example.com/acme/cert/2>;title="foo";rel="alternate"'
+
+        deadline = datetime.datetime(9999, 9, 9)
+        resp = self.client.finalize_order(self.orderr, deadline, fetch_alternative_chains=True)
+        self.net.post.assert_any_call('https://example.com/acme/cert/1',
+                                      mock.ANY, acme_version=2, new_nonce_url=mock.ANY)
+        self.net.post.assert_any_call('https://example.com/acme/cert/2',
+                                      mock.ANY, acme_version=2, new_nonce_url=mock.ANY)
+        self.assertEqual(resp, updated_orderr)
+
+        del self.response.headers['Link']
+        resp = self.client.finalize_order(self.orderr, deadline, fetch_alternative_chains=True)
+        self.assertEqual(resp, updated_orderr.update(alternative_fullchains_pem=[]))
+
     def test_revoke(self):
         self.client.revoke(messages_test.CERT, self.rsn)
         self.net.post.assert_called_once_with(
@@ -887,21 +914,8 @@ class ClientV2Test(ClientTestBase):
                 new_nonce_url='https://www.letsencrypt-demo.org/acme/new-nonce')
             self.client.net.get.assert_not_called()
 
-            class FakeError(messages.Error):
-                """Fake error to reproduce a malformed request ACME error"""
-                def __init__(self):  # pylint: disable=super-init-not-called
-                    pass
-                @property
-                def code(self):
-                    return 'malformed'
-            self.client.net.post.side_effect = FakeError()
 
-            self.client.poll(self.authzr2)  # pylint: disable=protected-access
-
-            self.client.net.get.assert_called_once_with(self.authzr2.uri)
-
-
-class MockJSONDeSerializable(jose.JSONDeSerializable):
+class MockJSONDeSerializable(VersionedLEACMEMixin, jose.JSONDeSerializable):
     # pylint: disable=missing-docstring
     def __init__(self, value):
         self.value = value
@@ -965,8 +979,8 @@ class ClientNetworkTest(unittest.TestCase):
 
     def test_check_response_not_ok_jobj_error(self):
         self.response.ok = False
-        self.response.json.return_value = messages.Error(
-            detail='foo', typ='serverInternal', title='some title').to_json()
+        self.response.json.return_value = messages.Error.with_code(
+            'serverInternal', detail='foo', title='some title').to_json()
         # pylint: disable=protected-access
         self.assertRaises(
             messages.Error, self.net._check_response, self.response)
@@ -991,9 +1005,38 @@ class ClientNetworkTest(unittest.TestCase):
         self.response.json.side_effect = ValueError
         for response_ct in [self.net.JSON_CONTENT_TYPE, 'foo']:
             self.response.headers['Content-Type'] = response_ct
-            # pylint: disable=protected-access,no-value-for-parameter
+            # pylint: disable=protected-access
             self.assertEqual(
                 self.response, self.net._check_response(self.response))
+
+    @mock.patch('acme.client.logger')
+    def test_check_response_ok_ct_with_charset(self, mock_logger):
+        self.response.json.return_value = {}
+        self.response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        # pylint: disable=protected-access
+        self.assertEqual(self.response, self.net._check_response(
+            self.response, content_type='application/json'))
+        try:
+            mock_logger.debug.assert_called_with(
+                'Ignoring wrong Content-Type (%r) for JSON decodable response',
+                'application/json; charset=utf-8'
+            )
+        except AssertionError:
+            return
+        raise AssertionError('Expected Content-Type warning ' #pragma: no cover
+            'to not have been logged')
+
+    @mock.patch('acme.client.logger')
+    def test_check_response_ok_bad_ct(self, mock_logger):
+        self.response.json.return_value = {}
+        self.response.headers['Content-Type'] = 'text/plain'
+        # pylint: disable=protected-access
+        self.assertEqual(self.response, self.net._check_response(
+            self.response, content_type='application/json'))
+        mock_logger.debug.assert_called_with(
+            'Ignoring wrong Content-Type (%r) for JSON decodable response',
+            'text/plain'
+        )
 
     def test_check_response_conflict(self):
         self.response.ok = False
@@ -1005,7 +1048,7 @@ class ClientNetworkTest(unittest.TestCase):
         self.response.json.return_value = {}
         for response_ct in [self.net.JSON_CONTENT_TYPE, 'foo']:
             self.response.headers['Content-Type'] = response_ct
-            # pylint: disable=protected-access,no-value-for-parameter
+            # pylint: disable=protected-access
             self.assertEqual(
                 self.response, self.net._check_response(self.response))
 
@@ -1130,8 +1173,8 @@ class ClientNetworkWithMockedResponseTest(unittest.TestCase):
         self.response.headers = {}
         self.response.links = {}
         self.response.checked = False
-        self.acmev1_nonce_response = mock.MagicMock(ok=False,
-            status_code=http_client.METHOD_NOT_ALLOWED)
+        self.acmev1_nonce_response = mock.MagicMock(
+            ok=False, status_code=http_client.METHOD_NOT_ALLOWED)
         self.acmev1_nonce_response.headers = {}
         self.obj = mock.MagicMock()
         self.wrapped_obj = mock.MagicMock()
@@ -1299,7 +1342,7 @@ class ClientNetworkSourceAddressBindingTest(unittest.TestCase):
         # test should fail if the default adapter type is changed by requests
         net = ClientNetwork(key=None, alg=None)
         session = requests.Session()
-        for scheme in session.adapters.keys():
+        for scheme in session.adapters:
             client_network_adapter = net.session.adapters.get(scheme)
             default_adapter = session.adapters.get(scheme)
             self.assertEqual(client_network_adapter.__class__, default_adapter.__class__)

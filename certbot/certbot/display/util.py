@@ -1,16 +1,28 @@
-"""Certbot display."""
+"""Certbot display.
+
+This module (`certbot.display.util`) or its companion `certbot.display.ops`
+should be used whenever:
+
+- Displaying status information to the user on the terminal
+- Collecting information from the user via prompts
+
+Other messages can use the `logging` module. See `log.py`.
+
+"""
 import logging
 import sys
 import textwrap
 
 import zope.interface
+import zope.component
 
-from certbot._internal import constants
+from acme.magic_typing import List
 from certbot import errors
 from certbot import interfaces
+from certbot._internal import constants
+from certbot._internal.display import completer
 from certbot.compat import misc
 from certbot.compat import os
-from certbot._internal.display import completer
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +98,18 @@ def input_with_timeout(prompt=None, timeout=36000.0):
     return line.rstrip('\n')
 
 
+def notify(msg):
+    # type: (str) -> None
+    """Display a basic status message.
+
+    :param str msg: message to display
+
+    """
+    zope.component.getUtility(interfaces.IDisplay).notification(
+        msg, pause=False, decorate=False, wrap=False
+    )
+
+
 @zope.interface.implementer(interfaces.IDisplay)
 class FileDisplay(object):
     """File-based display."""
@@ -98,7 +122,8 @@ class FileDisplay(object):
         self.skipped_interaction = False
 
     def notification(self, message, pause=True,
-                     wrap=True, force_interactive=False):
+                     wrap=True, force_interactive=False,
+                     decorate=True):
         """Displays a notification and waits for user acceptance.
 
         :param str message: Message to display
@@ -107,14 +132,23 @@ class FileDisplay(object):
         :param bool wrap: Whether or not the application should wrap text
         :param bool force_interactive: True if it's safe to prompt the user
             because it won't cause any workflow regressions
+        :param bool decorate: Whether to surround the message with a
+            decorated frame
 
         """
         if wrap:
             message = _wrap_lines(message)
+
+        logger.debug("Notifying user: %s", message)
+
         self.outfile.write(
-            "{line}{frame}{line}{msg}{line}{frame}{line}".format(
-                line='\n', frame=SIDE_FRAME, msg=message))
+            (("{line}{frame}{line}" if decorate else "") +
+             "{msg}{line}" +
+             ("{frame}{line}" if decorate else ""))
+            .format(line=os.linesep, frame=SIDE_FRAME, msg=message)
+        )
         self.outfile.flush()
+
         if pause:
             if self._can_interact(force_interactive):
                 input_with_timeout("Press Enter to Continue")
@@ -177,7 +211,7 @@ class FileDisplay(object):
         message = _wrap_lines("%s (Enter 'c' to cancel):" % message) + " "
         ans = input_with_timeout(message)
 
-        if ans == "c" or ans == "C":
+        if ans in ("c", "C"):
             return CANCEL, "-1"
         return OK, ans
 
@@ -258,10 +292,9 @@ class FileDisplay(object):
                 selected_tags = self._scrub_checklist_input(indices, tags)
                 if selected_tags:
                     return code, selected_tags
-                else:
-                    self.outfile.write(
-                        "** Error - Invalid selection **%s" % os.linesep)
-                    self.outfile.flush()
+                self.outfile.write(
+                    "** Error - Invalid selection **%s" % os.linesep)
+                self.outfile.flush()
             else:
                 return code, []
 
@@ -282,18 +315,17 @@ class FileDisplay(object):
         # assert_valid_call(prompt, default, cli_flag, force_interactive)
         if self._can_interact(force_interactive):
             return False
-        elif default is None:
+        if default is None:
             msg = "Unable to get an answer for the question:\n{0}".format(prompt)
             if cli_flag:
                 msg += (
                     "\nYou can provide an answer on the "
                     "command line with the {0} flag.".format(cli_flag))
             raise errors.Error(msg)
-        else:
-            logger.debug(
-                "Falling back to default %s for the prompt:\n%s",
-                default, prompt)
-            return True
+        logger.debug(
+            "Falling back to default %s for the prompt:\n%s",
+            default, prompt)
+        return True
 
     def _can_interact(self, force_interactive):
         """Can we safely interact with the user?
@@ -308,7 +340,7 @@ class FileDisplay(object):
         if (self.force_interactive or force_interactive or
                 sys.stdin.isatty() and self.outfile.isatty()):
             return True
-        elif not self.skipped_interaction:
+        if not self.skipped_interaction:
             logger.warning(
                 "Skipped user interaction because Certbot doesn't appear to "
                 "be running in a terminal. You should probably include "
@@ -336,7 +368,6 @@ class FileDisplay(object):
             return self.input(message, default, cli_flag, force_interactive)
 
     def _scrub_checklist_input(self, indices, tags):
-        # pylint: disable=no-self-use
         """Validate input and transform indices to appropriate tags.
 
         :param list indices: input
@@ -464,19 +495,26 @@ class NoninteractiveDisplay(object):
             msg += "\n\n(You can set this with the {0} flag)".format(cli_flag)
         raise errors.MissingCommandlineFlag(msg)
 
-    def notification(self, message, pause=False, wrap=True, **unused_kwargs):  # pylint: disable=unused-argument
+    def notification(self, message, pause=False, wrap=True, decorate=True, **unused_kwargs):  # pylint: disable=unused-argument
         """Displays a notification without waiting for user acceptance.
 
         :param str message: Message to display to stdout
         :param bool pause: The NoninteractiveDisplay waits for no keyboard
         :param bool wrap: Whether or not the application should wrap text
+        :param bool decorate: Whether to apply a decorated frame to the message
 
         """
         if wrap:
             message = _wrap_lines(message)
+
+        logger.debug("Notifying user: %s", message)
+
         self.outfile.write(
-            "{line}{frame}{line}{msg}{line}{frame}{line}".format(
-                line=os.linesep, frame=SIDE_FRAME, msg=message))
+            (("{line}{frame}{line}" if decorate else "") +
+             "{msg}{line}" +
+             ("{frame}{line}" if decorate else ""))
+            .format(line=os.linesep, frame=SIDE_FRAME, msg=message)
+        )
         self.outfile.flush()
 
     def menu(self, message, choices, ok_label=None, cancel_label=None,
@@ -596,3 +634,28 @@ def _parens_around_char(label):
 
     """
     return "({first}){rest}".format(first=label[0], rest=label[1:])
+
+
+def summarize_domain_list(domains):
+    # type: (List[str]) -> str
+    """Summarizes a list of domains in the format of:
+        example.com.com and N more domains
+    or if there is are only two domains:
+        example.com and www.example.com
+    or if there is only one domain:
+        example.com
+
+    :param list domains: `str` list of domains
+    :returns: the domain list summary
+    :rtype: str
+    """
+    if not domains:
+        return ""
+
+    l = len(domains)
+    if l == 1:
+        return domains[0]
+    elif l == 2:
+        return " and ".join(domains)
+    else:
+        return "{0} and {1} more domains".format(domains[0], l-1)

@@ -4,9 +4,7 @@ import logging
 import zope.component
 
 from certbot import interfaces
-
 import certbot.display.util as display_util
-
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +17,7 @@ def select_vhost_multiple(vhosts):
     :rtype: :class:`list`of type `~obj.Vhost`
     """
     if not vhosts:
-        return list()
+        return []
     tags_list = [vhost.display_repr()+"\n" for vhost in vhosts]
     # Remove the extra newline from the last entry
     if tags_list:
@@ -35,7 +33,7 @@ def select_vhost_multiple(vhosts):
 def _reversemap_vhosts(names, vhosts):
     """Helper function for select_vhost_multiple for mapping string
     representations back to actual vhost objects"""
-    return_vhosts = list()
+    return_vhosts = []
 
     for selection in names:
         for vhost in vhosts:

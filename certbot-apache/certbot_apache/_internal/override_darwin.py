@@ -1,12 +1,9 @@
 """ Distribution specific override class for macOS """
-import pkg_resources
-
 import zope.interface
 
 from certbot import interfaces
-from certbot.compat import os
-
 from certbot_apache._internal import configurator
+
 
 @zope.interface.provider(interfaces.IPluginFactory)
 class DarwinConfigurator(configurator.ApacheConfigurator):
@@ -27,6 +24,5 @@ class DarwinConfigurator(configurator.ApacheConfigurator):
         handle_modules=False,
         handle_sites=False,
         challenge_location="/etc/apache2/other",
-        MOD_SSL_CONF_SRC=pkg_resources.resource_filename(
-            "certbot_apache", os.path.join("_internal", "options-ssl-apache.conf"))
+        bin=None,
     )

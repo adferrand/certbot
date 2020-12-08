@@ -1,32 +1,32 @@
-"""Test utilities.
-
-.. warning:: This module is not part of the public API.
-
-"""
+"""Test utilities."""
 import logging
+from multiprocessing import Event
+from multiprocessing import Process
 import shutil
 import sys
 import tempfile
 import unittest
-from multiprocessing import Process, Event
 
-import OpenSSL
-import josepy as jose
-import mock
-import pkg_resources
-import six
-from six.moves import reload_module  # pylint: disable=import-error
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
+import josepy as jose
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock # type: ignore
+import OpenSSL
+import pkg_resources
+import six
+from six.moves import reload_module
 
+from certbot import interfaces
+from certbot import util
 from certbot._internal import configuration
 from certbot._internal import constants
-from certbot import interfaces
 from certbot._internal import lock
 from certbot._internal import storage
-from certbot import util
-from certbot.compat import os
 from certbot.compat import filesystem
+from certbot.compat import os
 from certbot.display import util as display_util
 
 
@@ -56,8 +56,7 @@ def _guess_loader(filename, loader_pem, loader_der):
         return loader_pem
     elif ext.lower() == '.der':
         return loader_der
-    else:  # pragma: no cover
-        raise ValueError("Loader could not be recognized based on extension")
+    raise ValueError("Loader could not be recognized based on extension")  # pragma: no cover
 
 
 def load_cert(*names):
@@ -94,7 +93,7 @@ def load_pyopenssl_private_key(*names):
     return OpenSSL.crypto.load_privatekey(loader, load_vector(*names))
 
 
-def make_lineage(config_dir, testfile):
+def make_lineage(config_dir, testfile, ec=False):
     """Creates a lineage defined by testfile.
 
     This creates the archive, live, and renewal directories if
@@ -120,7 +119,7 @@ def make_lineage(config_dir, testfile):
         if not os.path.exists(directory):
             filesystem.makedirs(directory)
 
-    sample_archive = vector_path('sample-archive')
+    sample_archive = vector_path('sample-archive{}'.format('-ec' if ec else ''))
     for kind in os.listdir(sample_archive):
         shutil.copyfile(os.path.join(sample_archive, kind),
                         os.path.join(archive_dir, kind))
@@ -234,8 +233,7 @@ class FreezableMock(object):
         if self._frozen:
             if name in self._frozen_set:
                 raise AttributeError('Cannot change frozen attribute ' + name)
-            else:
-                return setattr(self._mock, name, value)
+            return setattr(self._mock, name, value)
 
         if name != '_frozen_set':
             self._frozen_set.add(name)
@@ -249,7 +247,7 @@ class FreezableMock(object):
 def _create_get_utility_mock():
     display = FreezableMock()
     # Use pylint code for disable to keep on single line under line length limit
-    for name in interfaces.IDisplay.names():  # pylint: disable=no-member,E1120
+    for name in interfaces.IDisplay.names():  # pylint: E1120
         if name != 'notification':
             frozen_mock = FreezableMock(frozen=True, func=_assert_valid_call)
             setattr(display, name, frozen_mock)
@@ -274,7 +272,7 @@ def _create_get_utility_mock_with_stdout(stdout):
 
     display = FreezableMock()
     # Use pylint code for disable to keep on single line under line length limit
-    for name in interfaces.IDisplay.names():  # pylint: disable=no-member,E1120
+    for name in interfaces.IDisplay.names():  # pylint: E1120
         if name == 'notification':
             frozen_mock = FreezableMock(frozen=True,
                                         func=_write_msg)

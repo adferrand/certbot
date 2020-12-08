@@ -1,11 +1,11 @@
 """Utilities for all Certbot."""
+# distutils.version under virtualenv confuses pylint
+# For more info, see: https://github.com/PyCQA/pylint/issues/73
 import argparse
 import atexit
 import collections
 from collections import OrderedDict
-# distutils.version under virtualenv confuses pylint
-# For more info, see: https://github.com/PyCQA/pylint/issues/73
-import distutils.version  # pylint: disable=import-error,no-name-in-module
+import distutils.version
 import errno
 import logging
 import platform
@@ -17,19 +17,18 @@ import sys
 import configargparse
 import six
 
-from acme.magic_typing import Tuple, Union  # pylint: disable=unused-import, no-name-in-module
-
-from certbot._internal import constants
+from acme.magic_typing import Text
+from acme.magic_typing import Tuple
+from acme.magic_typing import Union
 from certbot import errors
+from certbot._internal import constants
 from certbot._internal import lock
-from certbot.compat import os
 from certbot.compat import filesystem
+from certbot.compat import os
 
-if sys.platform.startswith('linux'):
+_USE_DISTRO = sys.platform.startswith('linux')
+if _USE_DISTRO:
     import distro
-    _USE_DISTRO = True
-else:
-    _USE_DISTRO = False
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +62,31 @@ _INITIAL_PID = os.getpid()
 _LOCKS = OrderedDict() # type: OrderedDict[str, lock.LockFile]
 
 
+def env_no_snap_for_external_calls():
+    """
+    When Certbot is run inside a Snap, certain environment variables
+    are modified. But Certbot sometimes calls out to external programs,
+    since it uses classic confinement. When we do that, we must modify
+    the env to remove our modifications so it will use the system's
+    libraries, since they may be incompatible with the versions of
+    libraries included in the Snap. For example, apachectl, Nginx, and
+    anything run from inside a hook should call this function and pass
+    the results into the ``env`` argument of ``subprocess.Popen``.
+
+    :returns: A modified copy of os.environ ready to pass to Popen
+    :rtype: dict
+
+    """
+    env = os.environ.copy()
+    # Avoid accidentally modifying env
+    if 'SNAP' not in env or 'CERTBOT_SNAPPED' not in env:
+        return env
+    for path_name in ('PATH', 'LD_LIBRARY_PATH'):
+        if path_name in env:
+            env[path_name] = ':'.join(x for x in env[path_name].split(':') if env['SNAP'] not in x)
+    return env
+
+
 def run_script(params, log=logger.error):
     """Run the script with the given params.
 
@@ -74,7 +98,8 @@ def run_script(params, log=logger.error):
         proc = subprocess.Popen(params,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE,
-                                universal_newlines=True)
+                                universal_newlines=True,
+                                env=env_no_snap_for_external_calls())
 
     except (OSError, ValueError):
         msg = "Unable to run the command: %s" % " ".join(params)
@@ -105,10 +130,9 @@ def exe_exists(exe):
     path, _ = os.path.split(exe)
     if path:
         return filesystem.is_executable(exe)
-    else:
-        for path in os.environ["PATH"].split(os.pathsep):
-            if filesystem.is_executable(os.path.join(path, exe)):
-                return True
+    for path in os.environ["PATH"].split(os.pathsep):
+        if filesystem.is_executable(os.path.join(path, exe)):
+            return True
 
     return False
 
@@ -378,14 +402,16 @@ def get_python_os_info(pretty=False):
         try:
             proc = subprocess.Popen(
                 ["/usr/bin/sw_vers", "-productVersion"],
-                stdout=subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 universal_newlines=True,
+                env=env_no_snap_for_external_calls(),
             )
         except OSError:
             proc = subprocess.Popen(
                 ["sw_vers", "-productVersion"],
-                stdout=subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 universal_newlines=True,
+                env=env_no_snap_for_external_calls(),
             )
         os_ver = proc.communicate()[0].rstrip('\n')
     elif os_type.startswith('freebsd'):
@@ -413,7 +439,7 @@ def safe_email(email):
     return False
 
 
-class _ShowWarning(argparse.Action):
+class DeprecatedArgumentAction(argparse.Action):
     """Action to log a warning when an argument is used."""
     def __call__(self, unused1, unused2, unused3, option_string=None):
         logger.warning("Use of %s is deprecated.", option_string)
@@ -432,17 +458,16 @@ def add_deprecated_argument(add_argument, argument_name, nargs):
     :param nargs: Value for nargs when adding the argument to argparse.
 
     """
-    if _ShowWarning not in configargparse.ACTION_TYPES_THAT_DONT_NEED_A_VALUE:
+    if DeprecatedArgumentAction not in configargparse.ACTION_TYPES_THAT_DONT_NEED_A_VALUE:
         # In version 0.12.0 ACTION_TYPES_THAT_DONT_NEED_A_VALUE was
         # changed from a set to a tuple.
         if isinstance(configargparse.ACTION_TYPES_THAT_DONT_NEED_A_VALUE, set):
-            # pylint: disable=no-member
             configargparse.ACTION_TYPES_THAT_DONT_NEED_A_VALUE.add(
-                _ShowWarning)
+                DeprecatedArgumentAction)
         else:
             configargparse.ACTION_TYPES_THAT_DONT_NEED_A_VALUE += (
-                _ShowWarning,)
-    add_argument(argument_name, action=_ShowWarning,
+                DeprecatedArgumentAction,)
+    add_argument(argument_name, action=DeprecatedArgumentAction,
                  help=argparse.SUPPRESS, nargs=nargs)
 
 
@@ -537,7 +562,7 @@ def enforce_domain_sanity(domain):
     for l in labels:
         if not l:
             raise errors.ConfigurationError("{0} it contains an empty label.".format(msg))
-        elif len(l) > 63:
+        if len(l) > 63:
             raise errors.ConfigurationError("{0} label {1} is too long.".format(msg, l))
 
     return domain
@@ -553,11 +578,9 @@ def is_wildcard_domain(domain):
     :rtype: bool
 
     """
+    wildcard_marker = b"*."  # type: Union[Text, bytes]
     if isinstance(domain, six.text_type):
         wildcard_marker = u"*."
-    else:
-        wildcard_marker = b"*."
-
     return domain.startswith(wildcard_marker)
 
 
@@ -571,7 +594,6 @@ def get_strict_version(normalized):
 
     """
     # strict version ending with "a" and a number designates a pre-release
-    # pylint: disable=no-member
     return distutils.version.StrictVersion(normalized.replace(".dev", "a"))
 
 

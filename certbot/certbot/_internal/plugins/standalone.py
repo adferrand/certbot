@@ -11,13 +11,14 @@ import zope.interface
 
 from acme import challenges
 from acme import standalone as acme_standalone
-# pylint: disable=unused-import, no-name-in-module
-from acme.magic_typing import DefaultDict, Dict, Set, Tuple, List, Type, TYPE_CHECKING
-
-from certbot import achallenges  # pylint: disable=unused-import
+from acme.magic_typing import DefaultDict
+from acme.magic_typing import Dict
+from acme.magic_typing import Set
+from acme.magic_typing import Tuple
+from acme.magic_typing import TYPE_CHECKING
+from certbot import achallenges
 from certbot import errors
 from certbot import interfaces
-
 from certbot.plugins import common
 
 logger = logging.getLogger(__name__)
@@ -75,7 +76,6 @@ class ServerManager(object):
         servers.serve_forever()
 
         # if port == 0, then random free port on OS is taken
-        # pylint: disable=no-member
         # both servers, if they exist, have the same port
         real_port = servers.getsocknames()[0][1]
         self._instances[real_port] = servers
@@ -139,20 +139,20 @@ class Authenticator(common.Plugin):
     def add_parser_arguments(cls, add):
         pass  # No additional argument for the standalone plugin parser
 
-    def more_info(self):  # pylint: disable=missing-docstring
+    def more_info(self):  # pylint: disable=missing-function-docstring
         return("This authenticator creates its own ephemeral TCP listener "
                "on the necessary port in order to respond to incoming "
                "http-01 challenges from the certificate authority. Therefore, "
                "it does not rely on any existing server program.")
 
-    def prepare(self):  # pylint: disable=missing-docstring
+    def prepare(self):  # pylint: disable=missing-function-docstring
         pass
 
     def get_chall_pref(self, domain):
-        # pylint: disable=unused-argument,missing-docstring
+        # pylint: disable=unused-argument,missing-function-docstring
         return [challenges.HTTP01]
 
-    def perform(self, achalls):  # pylint: disable=missing-docstring
+    def perform(self, achalls):  # pylint: disable=missing-function-docstring
         return [self._try_perform_single(achall) for achall in achalls]
 
     def _try_perform_single(self, achall):
@@ -177,7 +177,7 @@ class Authenticator(common.Plugin):
         self.http_01_resources.add(resource)
         return servers, response
 
-    def cleanup(self, achalls):  # pylint: disable=missing-docstring
+    def cleanup(self, achalls):  # pylint: disable=missing-function-docstring
         # reduce self.served and close servers if no challenges are served
         for unused_servers, server_achalls in self.served.items():
             for achall in achalls:
@@ -195,7 +195,7 @@ def _handle_perform_error(error):
             "the appropriate permissions (for example, you "
             "aren't running this program as "
             "root).".format(error.port))
-    elif error.socket_error.errno == socket_errors.EADDRINUSE:
+    if error.socket_error.errno == socket_errors.EADDRINUSE:
         display = zope.component.getUtility(interfaces.IDisplay)
         msg = (
             "Could not bind TCP port {0} because it is already in "

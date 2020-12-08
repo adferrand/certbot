@@ -1,15 +1,16 @@
 """Test for certbot_apache._internal.configurator for Centos overrides"""
 import unittest
 
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock # type: ignore
 
 from certbot import errors
 from certbot.compat import filesystem
 from certbot.compat import os
-
 from certbot_apache._internal import obj
 from certbot_apache._internal import override_centos
-
 import util
 
 
@@ -23,12 +24,12 @@ def get_vh_truth(temp_dir, config_name):
         obj.VirtualHost(
             os.path.join(prefix, "centos.example.com.conf"),
             os.path.join(aug_pre, "centos.example.com.conf/VirtualHost"),
-            set([obj.Addr.fromstring("*:80")]),
+            {obj.Addr.fromstring("*:80")},
             False, True, "centos.example.com"),
         obj.VirtualHost(
             os.path.join(prefix, "ssl.conf"),
             os.path.join(aug_pre, "ssl.conf/VirtualHost"),
-            set([obj.Addr.fromstring("_default_:443")]),
+            {obj.Addr.fromstring("_default_:443")},
             True, True, None)
     ]
     return vh_truth
@@ -108,7 +109,7 @@ class MultipleVhostsTestCentOS(util.ApacheTest):
     def test_get_parser(self):
         self.assertIsInstance(self.config.parser, override_centos.CentOSParser)
 
-    @mock.patch("certbot_apache._internal.parser.ApacheParser._get_runtime_cfg")
+    @mock.patch("certbot_apache._internal.apache_util._get_runtime_cfg")
     def test_opportunistic_httpd_runtime_parsing(self, mock_get):
         define_val = (
             'Define: TEST1\n'
@@ -128,7 +129,7 @@ class MultipleVhostsTestCentOS(util.ApacheTest):
                 return mod_val
             return ""
         mock_get.side_effect = mock_get_cfg
-        self.config.parser.modules = set()
+        self.config.parser.modules = {}
         self.config.parser.variables = {}
 
         with mock.patch("certbot.util.get_os_info") as mock_osi:
@@ -139,7 +140,7 @@ class MultipleVhostsTestCentOS(util.ApacheTest):
         self.assertEqual(mock_get.call_count, 3)
         self.assertEqual(len(self.config.parser.modules), 4)
         self.assertEqual(len(self.config.parser.variables), 2)
-        self.assertTrue("TEST2" in self.config.parser.variables.keys())
+        self.assertTrue("TEST2" in self.config.parser.variables)
         self.assertTrue("mod_another.c" in self.config.parser.modules)
 
     def test_get_virtual_hosts(self):
@@ -157,7 +158,7 @@ class MultipleVhostsTestCentOS(util.ApacheTest):
                 raise Exception("Missed: %s" % vhost)  # pragma: no cover
         self.assertEqual(found, 2)
 
-    @mock.patch("certbot_apache._internal.parser.ApacheParser._get_runtime_cfg")
+    @mock.patch("certbot_apache._internal.apache_util._get_runtime_cfg")
     def test_get_sysconfig_vars(self, mock_cfg):
         """Make sure we read the sysconfig OPTIONS variable correctly"""
         # Return nothing for the process calls
@@ -171,11 +172,11 @@ class MultipleVhostsTestCentOS(util.ApacheTest):
             mock_osi.return_value = ("centos", "7")
             self.config.parser.update_runtime_variables()
 
-        self.assertTrue("mock_define" in self.config.parser.variables.keys())
-        self.assertTrue("mock_define_too" in self.config.parser.variables.keys())
-        self.assertTrue("mock_value" in self.config.parser.variables.keys())
+        self.assertTrue("mock_define" in self.config.parser.variables)
+        self.assertTrue("mock_define_too" in self.config.parser.variables)
+        self.assertTrue("mock_value" in self.config.parser.variables)
         self.assertEqual("TRUE", self.config.parser.variables["mock_value"])
-        self.assertTrue("MOCK_NOSEP" in self.config.parser.variables.keys())
+        self.assertTrue("MOCK_NOSEP" in self.config.parser.variables)
         self.assertEqual("NOSEP_VAL", self.config.parser.variables["NOSEP_TWO"])
 
     @mock.patch("certbot_apache._internal.configurator.util.run_script")

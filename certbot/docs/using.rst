@@ -180,9 +180,9 @@ Certbot's DNS plugins.
 
 These plugins are not included in a default Certbot installation and must be
 installed separately. While the DNS plugins cannot currently be used with
-``certbot-auto``, they are available in many OS package managers and as Docker
-images. Visit https://certbot.eff.org to learn the best way to use the DNS
-plugins on your system.
+``certbot-auto``, they are available in many OS package managers, as Docker
+images, and as snaps. Visit https://certbot.eff.org to learn the best way to use
+the DNS plugins on your system.
 
 Once installed, you can find documentation on how to use each plugin at:
 
@@ -191,6 +191,7 @@ Once installed, you can find documentation on how to use each plugin at:
 * `certbot-dns-digitalocean <https://certbot-dns-digitalocean.readthedocs.io>`_
 * `certbot-dns-dnsimple <https://certbot-dns-dnsimple.readthedocs.io>`_
 * `certbot-dns-dnsmadeeasy <https://certbot-dns-dnsmadeeasy.readthedocs.io>`_
+* `certbot-dns-gehirn <https://certbot-dns-gehirn.readthedocs.io>`_
 * `certbot-dns-google <https://certbot-dns-google.readthedocs.io>`_
 * `certbot-dns-linode <https://certbot-dns-linode.readthedocs.io>`_
 * `certbot-dns-luadns <https://certbot-dns-luadns.readthedocs.io>`_
@@ -198,6 +199,7 @@ Once installed, you can find documentation on how to use each plugin at:
 * `certbot-dns-ovh <https://certbot-dns-ovh.readthedocs.io>`_
 * `certbot-dns-rfc2136 <https://certbot-dns-rfc2136.readthedocs.io>`_
 * `certbot-dns-route53 <https://certbot-dns-route53.readthedocs.io>`_
+* `certbot-dns-sakuracloud <https://certbot-dns-sakuracloud.readthedocs.io>`_
 
 Manual
 ------
@@ -275,23 +277,28 @@ haproxy_           Y    Y    Integration with the HAProxy load balancer
 s3front_           Y    Y    Integration with Amazon CloudFront distribution of S3 buckets
 gandi_             Y    N    Obtain certificates via the Gandi LiveDNS API
 varnish_           Y    N    Obtain certificates via a Varnish server
-external_          Y    N    A plugin for convenient scripting (See also ticket 2782_)
+external-auth_     Y    Y    A plugin for convenient scripting
 pritunl_           N    Y    Install certificates in pritunl distributed OpenVPN servers
 proxmox_           N    Y    Install certificates in Proxmox Virtualization servers
 dns-standalone_    Y    N    Obtain certificates via an integrated DNS server
 dns-ispconfig_     Y    N    DNS Authentication using ISPConfig as DNS server
+dns-clouddns_      Y    N    DNS Authentication using CloudDNS API
+dns-lightsail_     Y    N    DNS Authentication using Amazon Lightsail DNS API
+dns-inwx_          Y    Y    DNS Authentication for INWX through the XML API
 ================== ==== ==== ===============================================================
 
 .. _haproxy: https://github.com/greenhost/certbot-haproxy
 .. _s3front: https://github.com/dlapiduz/letsencrypt-s3front
 .. _gandi: https://github.com/obynio/certbot-plugin-gandi
-.. _varnish: http://git.sesse.net/?p=letsencrypt-varnish-plugin
-.. _2782: https://github.com/certbot/certbot/issues/2782
+.. _varnish: https://git.sesse.net/?p=letsencrypt-varnish-plugin
 .. _pritunl: https://github.com/kharkevich/letsencrypt-pritunl
 .. _proxmox: https://github.com/kharkevich/letsencrypt-proxmox
-.. _external: https://github.com/marcan/letsencrypt-external
+.. _external-auth: https://github.com/EnigmaBridge/certbot-external-auth
 .. _dns-standalone: https://github.com/siilike/certbot-dns-standalone
 .. _dns-ispconfig: https://github.com/m42e/certbot-dns-ispconfig
+.. _dns-clouddns: https://github.com/vshosting/certbot-dns-clouddns
+.. _dns-lightsail: https://github.com/noi/certbot-dns-lightsail
+.. _dns-inwx: https://github.com/oGGy990/certbot-dns-inwx/
 
 If you're interested, you can also :ref:`write your own plugin <dev-plugin>`.
 
@@ -312,6 +319,7 @@ This returns information in the following format::
       Domains: example.com, www.example.com
       Expiry Date: 2017-02-19 19:53:00+00:00 (VALID: 30 days)
       Certificate Path: /etc/letsencrypt/live/example.com/fullchain.pem
+      Key Type: RSA
       Private Key Path: /etc/letsencrypt/live/example.com/privkey.pem
 
 ``Certificate Name`` shows the name of the certificate. Pass this name
@@ -338,7 +346,6 @@ The ``--force-renewal``, ``--duplicate``, and ``--expand`` options
 control Certbot's behavior when re-creating
 a certificate with the same name as an existing certificate.
 If you don't specify a requested behavior, Certbot may ask you what you intended.
-
 
 ``--force-renewal`` tells Certbot to request a new certificate
 with the same domains as an existing certificate. Each domain
@@ -373,7 +380,6 @@ If you prefer, you can specify the domains individually like this:
 Consider using ``--cert-name`` instead of ``--expand``, as it gives more control
 over which certificate is modified and it lets you remove domains as well as adding them.
 
-
 ``--allow-subset-of-names`` tells Certbot to continue with certificate generation if
 only some of the specified domain authorizations can be obtained. This may
 be useful if some domains specified in a certificate no longer point at this
@@ -384,12 +390,12 @@ certificate exists alongside any previously obtained certificates, whether
 or not the previous certificates have expired. The generation of a new
 certificate counts against several rate limits that are intended to prevent
 abuse of the ACME protocol, as described
-`here <https://community.letsencrypt.org/t/rate-limits-for-lets-encrypt/6769>`__.
+`here <https://letsencrypt.org/docs/rate-limits/>`__.
 
 .. _changing:
 
 Changing a Certificate's Domains
-================================
+--------------------------------
 
 The ``--cert-name`` flag can also be used to modify the domains a certificate contains,
 by specifying new domains using the ``-d`` or ``--domains`` flag. If certificate ``example.com``
@@ -403,6 +409,68 @@ replace that set entirely::
 
   certbot certonly --cert-name example.com -d example.org,www.example.org
 
+
+Using ECDSA keys
+----------------
+
+As of version 1.10, Certbot supports two types of private key algorithms:
+``rsa`` and ``ecdsa``. The type of key used by Certbot can be controlled
+through the ``--key-type`` option. You can also use the ``--elliptic-curve``
+option to control the curve used in ECDSA certificates.
+
+.. warning:: If you obtain certificates using ECDSA keys, you should be careful
+   not to downgrade your Certbot installation since ECDSA keys are not
+   supported by older versions of Certbot. Downgrades like this are possible if
+   you switch from something like the snaps or certbot-auto to packages
+   provided by your operating system which often lag behind.
+
+Changing existing certificates from RSA to ECDSA
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Unless you are aware that you need to support very old HTTPS clients that are
+not supported by most sites, you can safely just transition your site to use
+ECDSA keys instead of RSA keys. To accomplish this if you have existing
+certificates managed by Certbot, you may freely change the certificate to a new
+private key.
+
+If you want to use ECDSA keys for all certificates in the future, you can
+simply add the following line to Certbot's :ref:`configuration file <config-file>`
+
+.. code-block:: ini
+
+  key-type = ecdsa
+
+After this option is set, newly obtained certificates will use ECDSA keys. This
+includes certificates managed by Certbot that previously used RSA keys.
+
+If you want to change a single certificate to use ECDSA keys, you'll need to
+issue a new Certbot command setting ``--key-type ecdsa`` on the command line
+like
+
+.. code-block:: shell
+
+  certbot renew --key-type ecdsa --cert-name example.com --force-renewal
+
+Obtaining ECDSA certificates in addition to RSA certificates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When Certbot configures the certificates it obtains with Apache or Nginx, all
+HTTPS clients that we try to support can use certificates with ECDSA keys. If,
+however, you are aware of having a specific need to support very old TLS
+clients, you may want to obtain both ECDSA and RSA certificates for the same
+domains. Certbot can only configure Apache or Nginx to use a single
+certificate, however, you could manually configure your software to use the
+different certificates depending on your needs.
+
+When obtaining both ECDSA and RSA certificates for the same domains with
+Certbot, we recommend using the ``--cert-name`` option to give your
+certificates names so that you can easily identify them. For instance, you may
+want to append "ecdsa" to the name of your ECDSA certificate by using a command
+like
+
+.. code-block:: shell
+
+  certbot certonly --key-type ecdsa --cert-name example.com-ecdsa
 
 Revoking certificates
 ---------------------
@@ -485,43 +553,6 @@ If you want your hook to run only after a successful renewal, use
 ``--deploy-hook`` in a command like this.
 
 ``certbot renew --deploy-hook /path/to/deploy-hook-script``
-
-For example, if you have a daemon that does not read its certificates as the
-root user, a deploy hook like this can copy them to the correct location and
-apply appropriate file permissions.
-
-/path/to/deploy-hook-script
-
-.. code-block:: none
-
-   #!/bin/sh
-
-   set -e
-
-   for domain in $RENEWED_DOMAINS; do
-           case $domain in
-           example.com)
-                   daemon_cert_root=/etc/some-daemon/certs
-
-                   # Make sure the certificate and private key files are
-                   # never world readable, even just for an instant while
-                   # we're copying them into daemon_cert_root.
-                   umask 077
-
-                   cp "$RENEWED_LINEAGE/fullchain.pem" "$daemon_cert_root/$domain.cert"
-                   cp "$RENEWED_LINEAGE/privkey.pem" "$daemon_cert_root/$domain.key"
-
-                   # Apply the proper file ownership and permissions for
-                   # the daemon to read its certificate and key.
-                   chown some-daemon "$daemon_cert_root/$domain.cert" \
-                           "$daemon_cert_root/$domain.key"
-                   chmod 400 "$daemon_cert_root/$domain.cert" \
-                           "$daemon_cert_root/$domain.key"
-
-                   service some-daemon restart >/dev/null
-                   ;;
-           esac
-   done
 
 You can also specify hooks by placing files in subdirectories of Certbot's
 configuration directory. Assuming your configuration directory is
@@ -665,7 +696,6 @@ systemd timers (`systemctl list-timers`).
    :header: "Distribution Name", "Distribution Version", "Automation Method"
 
    "CentOS", "EPEL 7", "systemd"
-   "Debian", "jessie", "cron, systemd"
    "Debian", "stretch", "cron, systemd"
    "Debian", "testing/sid", "cron, systemd"
    "Fedora", "26", "systemd"
@@ -686,6 +716,17 @@ via -d parameter. Rather than copying, please point
 your (web) server configuration directly to those files (or create
 symlinks). During the renewal_, ``/etc/letsencrypt/live`` is updated
 with the latest necessary files.
+
+For historical reasons, the containing directories are created with
+permissions of ``0700`` meaning that certificates are accessible only
+to servers that run as the root user.  **If you will never downgrade
+to an older version of Certbot**, then you can safely fix this using
+``chmod 0755 /etc/letsencrypt/{live,archive}``.
+
+For servers that drop root privileges before attempting to read the
+private key file, you will also need to use ``chgrp`` and ``chmod
+0640`` to allow the server to read
+``/etc/letsencrypt/live/$domain/privkey.pem``.
 
 .. note:: ``/etc/letsencrypt/archive`` and ``/etc/letsencrypt/keys``
    contain all previous keys and certificates, while
@@ -708,7 +749,7 @@ The following files are available:
   This is what Apache needs for `SSLCertificateKeyFile
   <https://httpd.apache.org/docs/2.4/mod/mod_ssl.html#sslcertificatekeyfile>`_,
   and Nginx for `ssl_certificate_key
-  <http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_certificate_key>`_.
+  <https://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_certificate_key>`_.
 
 ``fullchain.pem``
   All certificates, **including** server certificate (aka leaf certificate or
@@ -718,7 +759,7 @@ The following files are available:
   This is what Apache >= 2.4.8 needs for `SSLCertificateFile
   <https://httpd.apache.org/docs/2.4/mod/mod_ssl.html#sslcertificatefile>`_,
   and what Nginx needs for `ssl_certificate
-  <http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_certificate>`_.
+  <https://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_certificate>`_.
 
 ``cert.pem`` and ``chain.pem`` (less common)
   ``cert.pem`` contains the server certificate by itself, and
@@ -737,7 +778,7 @@ The following files are available:
 
   If you're using OCSP stapling with Nginx >= 1.3.7, ``chain.pem`` should be
   provided as the `ssl_trusted_certificate
-  <http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_trusted_certificate>`_
+  <https://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_trusted_certificate>`_
   to validate OCSP responses.
 
 .. note:: All files are PEM-encoded.
@@ -763,8 +804,10 @@ the ``cleanup.sh`` script. Additionally certbot will pass relevant environment
 variables to these scripts:
 
 - ``CERTBOT_DOMAIN``: The domain being authenticated
-- ``CERTBOT_VALIDATION``: The validation string (HTTP-01 and DNS-01 only)
+- ``CERTBOT_VALIDATION``: The validation string
 - ``CERTBOT_TOKEN``: Resource name part of the HTTP-01 challenge (HTTP-01 only)
+- ``CERTBOT_REMAINING_CHALLENGES``: Number of challenges remaining after the current challenge
+- ``CERTBOT_ALL_DOMAINS``: A comma-separated list of all domains challenged for the current certificate
 
 Additionally for cleanup:
 
@@ -869,17 +912,15 @@ Example usage for DNS-01 (Cloudflare API v4) (for example purposes only, do not 
 Changing the ACME Server
 ========================
 
-By default, Certbot uses Let's Encrypt's initial production server at
-https://acme-v01.api.letsencrypt.org/. You can tell Certbot to use a
+By default, Certbot uses Let's Encrypt's production server at
+https://acme-v02.api.letsencrypt.org/. You can tell Certbot to use a
 different CA by providing ``--server`` on the command line or in a
 :ref:`configuration file <config-file>` with the URL of the server's
 ACME directory. For example, if you would like to use Let's Encrypt's
-new ACMEv2 server, you would add ``--server
-https://acme-v02.api.letsencrypt.org/directory`` to the command line.
-Certbot will automatically select which version of the ACME protocol to
-use based on the contents served at the provided URL.
+staging server, you would add ``--server
+https://acme-staging-v02.api.letsencrypt.org/directory`` to the command line.
 
-If you use ``--server`` to specify an ACME CA that implements a newer
+If you use ``--server`` to specify an ACME CA that implements the standardized
 version of the spec, you may be able to obtain a certificate for a
 wildcard domain. Some CAs (such as Let's Encrypt) require that domain
 validation for wildcard domains must be done through modifications to

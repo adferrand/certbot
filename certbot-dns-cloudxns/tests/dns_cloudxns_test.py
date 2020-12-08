@@ -2,8 +2,12 @@
 
 import unittest
 
-import mock
-from requests.exceptions import HTTPError, RequestException
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock # type: ignore
+from requests.exceptions import HTTPError
+from requests.exceptions import RequestException
 
 from certbot.compat import os
 from certbot.plugins import dns_test_common

@@ -1,6 +1,5 @@
 """Nginx Configuration"""
-# https://github.com/PyCQA/pylint/issues/73
-from distutils.version import LooseVersion # pylint: disable=no-name-in-module,import-error
+from distutils.version import LooseVersion
 import logging
 import re
 import socket
@@ -8,22 +7,22 @@ import subprocess
 import tempfile
 import time
 
-import pkg_resources
-
 import OpenSSL
+import pkg_resources
 import zope.interface
 
 from acme import challenges
 from acme import crypto_util as acme_crypto_util
-from acme.magic_typing import List, Dict, Set  # pylint: disable=unused-import, no-name-in-module
-
+from acme.magic_typing import Dict
+from acme.magic_typing import List
+from acme.magic_typing import Set
+from acme.magic_typing import Text
 from certbot import crypto_util
 from certbot import errors
 from certbot import interfaces
 from certbot import util
 from certbot.compat import os
 from certbot.plugins import common
-
 from certbot_nginx._internal import constants
 from certbot_nginx._internal import display_ops
 from certbot_nginx._internal import http_01
@@ -79,6 +78,9 @@ class NginxConfigurator(common.Installer):
         add("ctl", default=constants.CLI_DEFAULTS["ctl"], help="Path to the "
             "'nginx' binary, used for 'configtest' and retrieving nginx "
             "version number.")
+        add("sleep-seconds", default=constants.CLI_DEFAULTS["sleep_seconds"], type=int,
+            help="Number of seconds to wait for nginx configuration changes "
+            "to apply when reloading.")
 
     @property
     def nginx_conf(self):
@@ -284,7 +286,7 @@ class NginxConfigurator(common.Installer):
                     filtered_vhosts[name] = vhost
 
         # Only unique VHost objects
-        dialog_input = set([vhost for vhost in filtered_vhosts.values()])
+        dialog_input = set(filtered_vhosts.values())
 
         # Ask the user which of names to enable, expect list of names back
         return_vhosts = display_ops.select_vhost_multiple(list(dialog_input))
@@ -313,9 +315,6 @@ class NginxConfigurator(common.Installer):
 
         .. todo:: This should maybe return list if no obvious answer
             is presented.
-
-        .. todo:: The special name "$hostname" corresponds to the machine's
-            hostname. Currently we just ignore this.
 
         :param str target_name: domain name
         :param bool create_if_no_match: If we should create a new vhost from default
@@ -599,6 +598,12 @@ class NginxConfigurator(common.Installer):
         all_names = set()  # type: Set[str]
 
         for vhost in self.parser.get_vhosts():
+            try:
+                vhost.names.remove("$hostname")
+                vhost.names.add(socket.gethostname())
+            except KeyError:
+                pass
+
             all_names.update(vhost.names)
 
             for addr in vhost.addrs:
@@ -694,7 +699,7 @@ class NginxConfigurator(common.Installer):
     ##################################
     # enhancement methods (IInstaller)
     ##################################
-    def supported_enhancements(self):  # pylint: disable=no-self-use
+    def supported_enhancements(self):
         """Returns currently supported enhancements."""
         return ['redirect', 'ensure-http-header', 'staple-ocsp']
 
@@ -747,7 +752,7 @@ class NginxConfigurator(common.Installer):
 
             # if there is no separate SSL block, break the block into two and
             # choose the SSL block.
-            if vhost.ssl and any([not addr.ssl for addr in vhost.addrs]):
+            if vhost.ssl and any(not addr.ssl for addr in vhost.addrs):
                 _, vhost = self._split_block(vhost)
 
             header_directives = [
@@ -911,9 +916,9 @@ class NginxConfigurator(common.Installer):
         :raises .errors.MisconfigurationError: If either the reload fails.
 
         """
-        nginx_restart(self.conf('ctl'), self.nginx_conf)
+        nginx_restart(self.conf('ctl'), self.nginx_conf, self.conf('sleep-seconds'))
 
-    def config_test(self):  # pylint: disable=no-self-use
+    def config_test(self):
         """Check the configuration of Nginx for errors.
 
         :raises .errors.MisconfigurationError: If config_test fails
@@ -938,7 +943,8 @@ class NginxConfigurator(common.Installer):
                 [self.conf('ctl'), "-c", self.nginx_conf, "-V"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                universal_newlines=True)
+                universal_newlines=True,
+                env=util.env_no_snap_for_external_calls())
             text = proc.communicate()[1]  # nginx prints output to stderr
         except (OSError, ValueError) as error:
             logger.debug(str(error), exc_info=True)
@@ -982,7 +988,7 @@ class NginxConfigurator(common.Installer):
             logger.warning("NGINX derivative %s is not officially supported by"
                            " certbot", product_name)
 
-        nginx_version = tuple([int(i) for i in product_version.split(".")])
+        nginx_version = tuple(int(i) for i in product_version.split("."))
 
         # nginx < 0.8.48 uses machine hostname as default server_name instead of
         # the empty string
@@ -1009,7 +1015,7 @@ class NginxConfigurator(common.Installer):
             matches = re.findall(r"built with OpenSSL ([^ ]+) ", text)
             if not matches:
                 logger.warning("NGINX configured with OpenSSL alternatives is not officially"
-                    "supported by Certbot.")
+                    " supported by Certbot.")
                 return ""
         return matches[0]
 
@@ -1088,7 +1094,7 @@ class NginxConfigurator(common.Installer):
     ###########################################################################
     # Challenges Section for IAuthenticator
     ###########################################################################
-    def get_chall_pref(self, unused_domain):  # pylint: disable=no-self-use
+    def get_chall_pref(self, unused_domain):
         """Return list of challenge preferences."""
         return [challenges.HTTP01]
 
@@ -1157,7 +1163,7 @@ def _redirect_block_for_domain(domain):
     return redirect_block
 
 
-def nginx_restart(nginx_ctl, nginx_conf):
+def nginx_restart(nginx_ctl, nginx_conf, sleep_duration):
     """Restarts the Nginx Server.
 
     .. todo:: Nginx restart is fatal if the configuration references
@@ -1165,32 +1171,43 @@ def nginx_restart(nginx_ctl, nginx_conf):
         before restart.
 
     :param str nginx_ctl: Path to the Nginx binary.
+    :param str nginx_conf: Path to the Nginx configuration file.
+    :param int sleep_duration: How long to sleep after sending the reload signal.
 
     """
     try:
-        proc = subprocess.Popen([nginx_ctl, "-c", nginx_conf, "-s", "reload"])
-        proc.communicate()
+        reload_output = u"" # type: Text
+        with tempfile.TemporaryFile() as out:
+            proc = subprocess.Popen([nginx_ctl, "-c", nginx_conf, "-s", "reload"],
+                                    env=util.env_no_snap_for_external_calls(),
+                                    stdout=out, stderr=out)
+            proc.communicate()
+            out.seek(0)
+            reload_output = out.read().decode("utf-8")
 
         if proc.returncode != 0:
-            # Maybe Nginx isn't running
+            logger.debug("nginx reload failed:\n%s", reload_output)
+            # Maybe Nginx isn't running - try start it
             # Write to temporary files instead of piping because of communication issues on Arch
             # https://github.com/certbot/certbot/issues/4324
             with tempfile.TemporaryFile() as out:
-                with tempfile.TemporaryFile() as err:
-                    nginx_proc = subprocess.Popen([nginx_ctl, "-c", nginx_conf],
-                        stdout=out, stderr=err)
-                    nginx_proc.communicate()
-                    if nginx_proc.returncode != 0:
-                        # Enter recovery routine...
-                        raise errors.MisconfigurationError(
-                            "nginx restart failed:\n%s\n%s" % (out.read(), err.read()))
+                nginx_proc = subprocess.Popen([nginx_ctl, "-c", nginx_conf],
+                    stdout=out, stderr=out, env=util.env_no_snap_for_external_calls())
+                nginx_proc.communicate()
+                if nginx_proc.returncode != 0:
+                    out.seek(0)
+                    # Enter recovery routine...
+                    raise errors.MisconfigurationError(
+                        "nginx restart failed:\n%s" % out.read().decode("utf-8"))
 
     except (OSError, ValueError):
         raise errors.MisconfigurationError("nginx restart failed")
-    # Nginx can take a moment to recognize a newly added TLS SNI servername, so sleep
-    # for a second. TODO: Check for expected servername and loop until it
-    # appears or return an error if looping too long.
-    time.sleep(1)
+    # Nginx can take a significant duration of time to fully apply a new config, depending
+    # on size and contents (https://github.com/certbot/certbot/issues/7422). Lacking a way
+    # to reliably identify when this process is complete, we provide the user with control
+    # over how long Certbot will sleep after reloading the configuration.
+    if sleep_duration > 0:
+        time.sleep(sleep_duration)
 
 
 def _determine_default_server_root():

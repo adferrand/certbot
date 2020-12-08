@@ -1,17 +1,15 @@
 """A class that performs HTTP-01 challenges for Nginx"""
 
+import io
 import logging
 
 from acme import challenges
-from acme.magic_typing import List # pylint: disable=unused-import, no-name-in-module
-
+from acme.magic_typing import List
 from certbot import errors
 from certbot.compat import os
 from certbot.plugins import common
-
-from certbot_nginx._internal import obj
 from certbot_nginx._internal import nginxparser
-
+from certbot_nginx._internal import obj
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +103,7 @@ class NginxHttp01(common.ChallengePerformer):
         self.configurator.reverter.register_file_creation(
             True, self.challenge_conf)
 
-        with open(self.challenge_conf, "w") as new_conf:
+        with io.open(self.challenge_conf, "w", encoding="utf-8") as new_conf:
             nginxparser.dump(config, new_conf)
 
     def _default_listen_addresses(self):

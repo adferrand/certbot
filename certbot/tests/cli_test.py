@@ -4,19 +4,21 @@ import copy
 import tempfile
 import unittest
 
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock
 import six
 from six.moves import reload_module  # pylint: disable=import-error
 
 from acme import challenges
-
-import certbot.tests.util as test_util
+from certbot import errors
 from certbot._internal import cli
 from certbot._internal import constants
-from certbot import errors
-from certbot.compat import os
-from certbot.compat import filesystem
 from certbot._internal.plugins import disco
+from certbot.compat import filesystem
+from certbot.compat import os
+import certbot.tests.util as test_util
 from certbot.tests.util import TempDirTestCase
 
 PLUGINS = disco.PluginsRegistry.find_all()
@@ -31,15 +33,23 @@ class TestReadFile(TempDirTestCase):
             # However a relative path between two different drives is invalid. So we move to
             # self.tempdir to ensure that we stay on the same drive.
             os.chdir(self.tempdir)
-            rel_test_path = os.path.relpath(os.path.join(self.tempdir, 'foo'))
+            # The read-only filesystem introduced with macOS Catalina can break
+            # code using relative paths below. See
+            # https://bugs.python.org/issue38295 for another example of this.
+            # Eliminating any possible symlinks in self.tempdir before passing
+            # it to os.path.relpath solves the problem. This is done by calling
+            # filesystem.realpath which removes any symlinks in the path on
+            # POSIX systems.
+            real_path = filesystem.realpath(os.path.join(self.tempdir, 'foo'))
+            relative_path = os.path.relpath(real_path)
             self.assertRaises(
-                argparse.ArgumentTypeError, cli.read_file, rel_test_path)
+                argparse.ArgumentTypeError, cli.read_file, relative_path)
 
             test_contents = b'bar\n'
-            with open(rel_test_path, 'wb') as f:
+            with open(relative_path, 'wb') as f:
                 f.write(test_contents)
 
-            path, contents = cli.read_file(rel_test_path)
+            path, contents = cli.read_file(relative_path)
             self.assertEqual(path, os.path.abspath(path))
             self.assertEqual(contents, test_contents)
         finally:
@@ -94,7 +104,7 @@ class ParseTest(unittest.TestCase):
 
         return output.getvalue()
 
-    @mock.patch("certbot._internal.cli.flag_default")
+    @mock.patch("certbot._internal.cli.helpful.flag_default")
     def test_cli_ini_domains(self, mock_flag_default):
         with tempfile.NamedTemporaryFile() as tmp_config:
             tmp_config.close()  # close now because of compatibility issues on Windows
@@ -143,7 +153,6 @@ class ParseTest(unittest.TestCase):
         self.assertTrue("how a certificate is deployed" in out)
         self.assertTrue("--webroot-path" in out)
         self.assertTrue("--text" not in out)
-        self.assertTrue("--dialog" not in out)
         self.assertTrue("%s" not in out)
         self.assertTrue("{0}" not in out)
         self.assertTrue("--renew-hook" not in out)
@@ -204,7 +213,6 @@ class ParseTest(unittest.TestCase):
         self.assertTrue("how a certificate is deployed" in out)
         self.assertTrue("--webroot-path" in out)
         self.assertTrue("--text" not in out)
-        self.assertTrue("--dialog" not in out)
         self.assertTrue("%s" not in out)
         self.assertTrue("{0}" not in out)
 
@@ -351,6 +359,21 @@ class ParseTest(unittest.TestCase):
         self.assertFalse(cli.option_was_set(
             'authenticator', cli.flag_default('authenticator')))
 
+    def test_ecdsa_key_option(self):
+        elliptic_curve_option = 'elliptic_curve'
+        elliptic_curve_option_value = cli.flag_default(elliptic_curve_option)
+        self.parse('--elliptic-curve {0}'.format(elliptic_curve_option_value).split())
+        self.assertIs(cli.option_was_set(elliptic_curve_option, elliptic_curve_option_value), True)
+
+    def test_invalid_key_type(self):
+        key_type_option = 'key_type'
+        key_type_value = cli.flag_default(key_type_option)
+        self.parse('--key-type {0}'.format(key_type_value).split())
+        self.assertIs(cli.option_was_set(key_type_option, key_type_value), True)
+
+        with self.assertRaises(SystemExit):
+            self.parse("--key-type foo")
+
     def test_encode_revocation_reason(self):
         for reason, code in constants.REVOCATION_REASONS.items():
             namespace = self.parse(['--reason', reason])
@@ -496,43 +519,6 @@ class SetByCliTest(unittest.TestCase):
         args = '-w /var/www/html -d example.com'.split()
         verb = 'renew'
         self.assertTrue(_call_set_by_cli('webroot_map', args, verb))
-
-    def test_report_config_interaction_str(self):
-        cli.report_config_interaction('manual_public_ip_logging_ok',
-                                      'manual_auth_hook')
-        cli.report_config_interaction('manual_auth_hook', 'manual')
-
-        self._test_report_config_interaction_common()
-
-    def test_report_config_interaction_iterable(self):
-        cli.report_config_interaction(('manual_public_ip_logging_ok',),
-                                      ('manual_auth_hook',))
-        cli.report_config_interaction(('manual_auth_hook',), ('manual',))
-
-        self._test_report_config_interaction_common()
-
-    def _test_report_config_interaction_common(self):
-        """Tests implied interaction between manual flags.
-
-        --manual implies --manual-auth-hook which implies
-        --manual-public-ip-logging-ok. These interactions don't actually
-        exist in the client, but are used here for testing purposes.
-
-        """
-
-        args = ['--manual']
-        verb = 'renew'
-        for v in ('manual', 'manual_auth_hook', 'manual_public_ip_logging_ok'):
-            self.assertTrue(_call_set_by_cli(v, args, verb))
-
-        # https://github.com/python/mypy/issues/2087
-        cli.set_by_cli.detector = None  # type: ignore
-
-        args = ['--manual-auth-hook', 'command']
-        for v in ('manual_auth_hook', 'manual_public_ip_logging_ok'):
-            self.assertTrue(_call_set_by_cli(v, args, verb))
-
-        self.assertFalse(_call_set_by_cli('manual', args, verb))
 
 
 def _call_set_by_cli(var, args, verb):

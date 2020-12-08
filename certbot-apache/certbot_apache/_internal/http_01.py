@@ -1,13 +1,13 @@
 """A class that performs HTTP-01 challenges for Apache"""
 import logging
+import errno
 
-from acme.magic_typing import List, Set  # pylint: disable=unused-import, no-name-in-module
-
+from acme.magic_typing import List
+from acme.magic_typing import Set
 from certbot import errors
-from certbot.compat import os
 from certbot.compat import filesystem
+from certbot.compat import os
 from certbot.plugins import common
-
 from certbot_apache._internal.obj import VirtualHost  # pylint: disable=unused-import
 from certbot_apache._internal.parser import get_aug_path
 
@@ -169,7 +169,15 @@ class ApacheHttp01(common.ChallengePerformer):
 
     def _set_up_challenges(self):
         if not os.path.isdir(self.challenge_dir):
-            filesystem.makedirs(self.challenge_dir, 0o755)
+            old_umask = filesystem.umask(0o022)
+            try:
+                filesystem.makedirs(self.challenge_dir, 0o755)
+            except OSError as exception:
+                if exception.errno not in (errno.EEXIST, errno.EISDIR):
+                    raise errors.PluginError(
+                        "Couldn't create root for http-01 challenge")
+            finally:
+                filesystem.umask(old_umask)
 
         responses = []
         for achall in self.achalls:
@@ -195,8 +203,8 @@ class ApacheHttp01(common.ChallengePerformer):
 
         if vhost not in self.moded_vhosts:
             logger.debug(
-                "Adding a temporary challenge validation Include for name: %s " +
-                "in: %s", vhost.name, vhost.filep)
+                "Adding a temporary challenge validation Include for name: %s in: %s",
+                vhost.name, vhost.filep)
             self.configurator.parser.add_dir_beginning(
                 vhost.path, "Include", self.challenge_conf_pre)
             self.configurator.parser.add_dir(

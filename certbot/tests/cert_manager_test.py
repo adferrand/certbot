@@ -7,16 +7,18 @@ import tempfile
 import unittest
 
 import configobj
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock
 
-from certbot._internal import configuration
 from certbot import errors
-from certbot.compat import os
-from certbot.compat import filesystem
-from certbot.display import util as display_util
+from certbot._internal import configuration
 from certbot._internal.storage import ALL_FOUR
+from certbot.compat import filesystem
+from certbot.compat import os
+from certbot.display import util as display_util
 from certbot.tests import util as test_util
-
 import storage_test
 
 
@@ -33,8 +35,8 @@ class BaseCertManagerTest(test_util.ConfigTestCase):
             "example.org": None,
             "other.com": os.path.join(self.config.config_dir, "specialarchive")
         }
-        self.config_files = dict((domain, self._set_up_config(domain, self.domains[domain]))
-            for domain in self.domains)
+        self.config_files = {domain: self._set_up_config(domain, self.domains[domain])
+            for domain in self.domains}
 
         # We also create a file that isn't a renewal config in the same
         # location to test that logic that reads in all-and-only renewal
@@ -78,8 +80,8 @@ class UpdateLiveSymlinksTest(BaseCertManagerTest):
                 archive_dir_path = custom_archive
             else:
                 archive_dir_path = os.path.join(self.config.default_archive_dir, domain)
-            archive_paths[domain] = dict((kind,
-                os.path.join(archive_dir_path, kind + "1.pem")) for kind in ALL_FOUR)
+            archive_paths[domain] = {kind:
+                os.path.join(archive_dir_path, kind + "1.pem") for kind in ALL_FOUR}
             for kind in ALL_FOUR:
                 live_path = self.config_files[domain][kind]
                 archive_path = archive_paths[domain][kind]
@@ -112,39 +114,82 @@ class DeleteTest(storage_test.BaseRenewableCertTest):
         cert_manager.delete(self.config)
 
     @test_util.patch_get_utility()
+    @mock.patch('certbot.display.util.notify')
     @mock.patch('certbot._internal.cert_manager.lineage_for_certname')
     @mock.patch('certbot._internal.storage.delete_files')
-    def test_delete_from_config(self, mock_delete_files, mock_lineage_for_certname,
-        unused_get_utility):
+    def test_delete_from_config_yes(self, mock_delete_files, mock_lineage_for_certname,
+        mock_notify, mock_util):
         """Test delete"""
         mock_lineage_for_certname.return_value = self.test_rc
+        mock_util().yesno.return_value = True
         self.config.certname = "example.org"
         self._call()
         mock_delete_files.assert_called_once_with(self.config, "example.org")
+        mock_notify.assert_called_once_with(
+            "Deleted all files relating to certificate example.org."
+        )
 
     @test_util.patch_get_utility()
     @mock.patch('certbot._internal.cert_manager.lineage_for_certname')
     @mock.patch('certbot._internal.storage.delete_files')
-    def test_delete_interactive_single(self, mock_delete_files, mock_lineage_for_certname,
+    def test_delete_from_config_no(self, mock_delete_files, mock_lineage_for_certname,
+        mock_util):
+        """Test delete"""
+        mock_lineage_for_certname.return_value = self.test_rc
+        mock_util().yesno.return_value = False
+        self.config.certname = "example.org"
+        self._call()
+        self.assertEqual(mock_delete_files.call_count, 0)
+
+    @test_util.patch_get_utility()
+    @mock.patch('certbot._internal.cert_manager.lineage_for_certname')
+    @mock.patch('certbot._internal.storage.delete_files')
+    def test_delete_interactive_single_yes(self, mock_delete_files, mock_lineage_for_certname,
         mock_util):
         """Test delete"""
         mock_lineage_for_certname.return_value = self.test_rc
         mock_util().checklist.return_value = (display_util.OK, ["example.org"])
+        mock_util().yesno.return_value = True
         self._call()
         mock_delete_files.assert_called_once_with(self.config, "example.org")
 
     @test_util.patch_get_utility()
     @mock.patch('certbot._internal.cert_manager.lineage_for_certname')
     @mock.patch('certbot._internal.storage.delete_files')
-    def test_delete_interactive_multiple(self, mock_delete_files, mock_lineage_for_certname,
+    def test_delete_interactive_single_no(self, mock_delete_files, mock_lineage_for_certname,
+        mock_util):
+        """Test delete"""
+        mock_lineage_for_certname.return_value = self.test_rc
+        mock_util().checklist.return_value = (display_util.OK, ["example.org"])
+        mock_util().yesno.return_value = False
+        self._call()
+        self.assertEqual(mock_delete_files.call_count, 0)
+
+    @test_util.patch_get_utility()
+    @mock.patch('certbot._internal.cert_manager.lineage_for_certname')
+    @mock.patch('certbot._internal.storage.delete_files')
+    def test_delete_interactive_multiple_yes(self, mock_delete_files, mock_lineage_for_certname,
         mock_util):
         """Test delete"""
         mock_lineage_for_certname.return_value = self.test_rc
         mock_util().checklist.return_value = (display_util.OK, ["example.org", "other.org"])
+        mock_util().yesno.return_value = True
         self._call()
         mock_delete_files.assert_any_call(self.config, "example.org")
         mock_delete_files.assert_any_call(self.config, "other.org")
         self.assertEqual(mock_delete_files.call_count, 2)
+
+    @test_util.patch_get_utility()
+    @mock.patch('certbot._internal.cert_manager.lineage_for_certname')
+    @mock.patch('certbot._internal.storage.delete_files')
+    def test_delete_interactive_multiple_no(self, mock_delete_files, mock_lineage_for_certname,
+        mock_util):
+        """Test delete"""
+        mock_lineage_for_certname.return_value = self.test_rc
+        mock_util().checklist.return_value = (display_util.OK, ["example.org", "other.org"])
+        mock_util().yesno.return_value = False
+        self._call()
+        self.assertEqual(mock_delete_files.call_count, 0)
 
 
 class CertificatesTest(BaseCertManagerTest):
@@ -179,7 +224,7 @@ class CertificatesTest(BaseCertManagerTest):
         mock_verifier.return_value = None
         mock_report.return_value = ""
         self._certificates(self.config)
-        self.assertFalse(mock_logger.warning.called) #pylint: disable=no-member
+        self.assertFalse(mock_logger.warning.called)
         self.assertTrue(mock_report.called)
         self.assertTrue(mock_utility.called)
         self.assertTrue(mock_renewable_cert.called)
@@ -197,13 +242,15 @@ class CertificatesTest(BaseCertManagerTest):
 
         filesystem.makedirs(empty_config.renewal_configs_dir)
         self._certificates(empty_config)
-        self.assertFalse(mock_logger.warning.called) #pylint: disable=no-member
+        self.assertFalse(mock_logger.warning.called)
         self.assertTrue(mock_utility.called)
         shutil.rmtree(empty_tempdir)
 
+    @mock.patch('certbot.crypto_util.get_serial_from_cert')
     @mock.patch('certbot._internal.cert_manager.ocsp.RevocationChecker.ocsp_revoked')
-    def test_report_human_readable(self, mock_revoked):
+    def test_report_human_readable(self, mock_revoked, mock_serial):
         mock_revoked.return_value = None
+        mock_serial.return_value = 1234567890
         from certbot._internal import cert_manager
         import datetime
         import pytz
@@ -241,7 +288,7 @@ class CertificatesTest(BaseCertManagerTest):
         # pylint: disable=protected-access
         out = get_report()
         self.assertTrue('3 days' in out)
-        self.assertTrue('VALID' in out and 'INVALID'  not in out)
+        self.assertTrue('VALID' in out and 'INVALID' not in out)
 
         cert.is_test_cert = True
         mock_revoked.return_value = True
@@ -565,13 +612,11 @@ class GetCertnameTest(unittest.TestCase):
     """Tests for certbot._internal.cert_manager."""
 
     def setUp(self):
-        self.get_utility_patch = test_util.patch_get_utility()
-        self.mock_get_utility = self.get_utility_patch.start()
+        get_utility_patch = test_util.patch_get_utility()
+        self.mock_get_utility = get_utility_patch.start()
+        self.addCleanup(get_utility_patch.stop)
         self.config = mock.MagicMock()
         self.config.certname = None
-
-    def tearDown(self):
-        self.get_utility_patch.stop()
 
     @mock.patch('certbot._internal.storage.renewal_conf_files')
     @mock.patch('certbot._internal.storage.lineagename_for_filename')

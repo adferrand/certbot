@@ -2,25 +2,21 @@
 import logging
 import re
 import shutil
-import sys
 import tempfile
-import warnings
 
+from josepy import util as jose_util
 import pkg_resources
 import zope.interface
 
-from josepy import util as jose_util
-
-from acme.magic_typing import List  # pylint: disable=unused-import, no-name-in-module
-
+from acme.magic_typing import List
 from certbot import achallenges  # pylint: disable=unused-import
-from certbot._internal import constants
 from certbot import crypto_util
 from certbot import errors
 from certbot import interfaces
 from certbot import reverter
-from certbot.compat import os
+from certbot._internal import constants
 from certbot.compat import filesystem
+from certbot.compat import os
 from certbot.plugins.storage import PluginStorage
 
 logger = logging.getLogger(__name__)
@@ -34,6 +30,7 @@ def option_namespace(name):
 def dest_namespace(name):
     """ArgumentParser dest namespace (prefix of all destinations)."""
     return name.replace("-", "_") + "_"
+
 
 private_ips_regex = re.compile(
     r"(^127\.0\.0\.1)|(^10\.)|(^172\.1[6-9]\.)|"
@@ -56,10 +53,6 @@ class Plugin(object):
     def add_parser_arguments(cls, add):
         """Add plugin arguments to the CLI argument parser.
 
-        NOTE: If some of your flags interact with others, you can
-        use cli.report_config_interaction to register this to ensure
-        values are correctly saved/overridable during renewal.
-
         :param callable add: Function that proxies calls to
             `argparse.ArgumentParser.add_argument` prepending options
             with unique plugin name prefix.
@@ -75,7 +68,6 @@ class Plugin(object):
         """
         # dummy function, doesn't check if dest.startswith(self.dest_namespace)
         def add(arg_name_no_prefix, *args, **kwargs):
-            # pylint: disable=missing-docstring
             return parser.add_argument(
                 "--{0}{1}".format(option_namespace(name), arg_name_no_prefix),
                 *args, **kwargs)
@@ -296,7 +288,7 @@ class Addr(object):
                 # appended to the end
                 append_to_end = True
                 continue
-            elif len(block) > 1:
+            if len(block) > 1:
                 # remove leading zeros
                 block = block.lstrip("0")
             if not append_to_end:
@@ -375,9 +367,9 @@ def install_version_controlled_file(dest_path, digest_path, src_path, all_hashes
     active_file_digest = crypto_util.sha256sum(dest_path)
     if active_file_digest == current_hash: # already up to date
         return
-    elif active_file_digest in all_hashes: # safe to update
+    if active_file_digest in all_hashes: # safe to update
         _install_current_file()
-    else: # has been manually modified, not safe to update
+    else:  # has been manually modified, not safe to update
         # did they modify the current version or an old version?
         if os.path.isfile(digest_path):
             with open(digest_path, "r") as f:
@@ -425,34 +417,3 @@ def dir_setup(test_dir, pkg):  # pragma: no cover
         test_configs, os.path.join(temp_dir, test_dir), symlinks=True)
 
     return temp_dir, config_dir, work_dir
-
-
-# This class takes a similar approach to the cryptography project to deprecate attributes
-# in public modules. See the _ModuleWithDeprecation class here:
-# https://github.com/pyca/cryptography/blob/91105952739442a74582d3e62b3d2111365b0dc7/src/cryptography/utils.py#L129
-class _TLSSNI01DeprecationModule(object):
-    """
-    Internal class delegating to a module, and displaying warnings when
-    attributes related to TLS-SNI-01 are accessed.
-    """
-    def __init__(self, module):
-        self.__dict__['_module'] = module
-
-    def __getattr__(self, attr):
-        if attr == 'TLSSNI01':
-            warnings.warn('TLSSNI01 is deprecated and will be removed soon.',
-                          DeprecationWarning, stacklevel=2)
-        return getattr(self._module, attr)
-
-    def __setattr__(self, attr, value):  # pragma: no cover
-        setattr(self._module, attr, value)
-
-    def __delattr__(self, attr):  # pragma: no cover
-        delattr(self._module, attr)
-
-    def __dir__(self):  # pragma: no cover
-        return ['_module'] + dir(self._module)
-
-
-# Patching ourselves to warn about TLS-SNI challenge deprecation and removal.
-sys.modules[__name__] = _TLSSNI01DeprecationModule(sys.modules[__name__])

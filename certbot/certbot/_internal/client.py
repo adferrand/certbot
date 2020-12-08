@@ -3,36 +3,34 @@ import datetime
 import logging
 import platform
 
-import OpenSSL
-import josepy as jose
-import zope.component
 from cryptography.hazmat.backends import default_backend
-# https://github.com/python/typeshed/blob/master/third_party/
-# 2/cryptography/hazmat/primitives/asymmetric/rsa.pyi
+# See https://github.com/pyca/cryptography/issues/4275
 from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key  # type: ignore
+import josepy as jose
+import OpenSSL
+import zope.component
 
 from acme import client as acme_client
 from acme import crypto_util as acme_crypto_util
 from acme import errors as acme_errors
 from acme import messages
-from acme.magic_typing import Optional, List  # pylint: disable=unused-import,no-name-in-module
-
+from acme.magic_typing import List
+from acme.magic_typing import Optional
 import certbot
+from certbot import crypto_util
+from certbot import errors
+from certbot import interfaces
+from certbot import util
 from certbot._internal import account
 from certbot._internal import auth_handler
 from certbot._internal import cli
 from certbot._internal import constants
-from certbot import crypto_util
 from certbot._internal import eff
 from certbot._internal import error_handler
-from certbot import errors
-from certbot import interfaces
 from certbot._internal import storage
-from certbot import util
-from certbot.compat import os
-from certbot._internal.display import enhancements
-from certbot.display import ops as display_ops
 from certbot._internal.plugins import selection as plugin_selection
+from certbot.compat import os
+from certbot.display import ops as display_ops
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +158,7 @@ def register(config, account_storage, tos_cb=None):
             logger.warning(msg)
             raise errors.Error(msg)
         if not config.dry_run:
-            logger.info("Registering without email!")
+            logger.debug("Registering without email!")
 
     # If --dry-run is used, and there is no staging account, create one with no email.
     if config.dry_run:
@@ -177,10 +175,9 @@ def register(config, account_storage, tos_cb=None):
     regr = perform_registration(acme, config, tos_cb)
 
     acc = account.Account(regr, key)
-    account.report_new_account(config)
     account_storage.save(acc, acme)
 
-    eff.handle_subscription(config)
+    eff.prepare_subscription(config, acc)
 
     return acc, acme
 
@@ -225,11 +222,9 @@ def perform_registration(acme, config, tos_cb):
                        "Please ensure it is a valid email and attempt "
                        "registration again." % config.email)
                 raise errors.Error(msg)
-            else:
-                config.email = display_ops.get_email(invalid=True)
-                return perform_registration(acme, config, tos_cb)
-        else:
-            raise
+            config.email = display_ops.get_email(invalid=True)
+            return perform_registration(acme, config, tos_cb)
+        raise
 
 
 class Client(object):
@@ -292,8 +287,16 @@ class Client(object):
             orderr = self._get_order_and_authorizations(csr.data, best_effort=False)
 
         deadline = datetime.datetime.now() + datetime.timedelta(seconds=90)
-        orderr = self.acme.finalize_order(orderr, deadline)
-        cert, chain = crypto_util.cert_and_chain_from_fullchain(orderr.fullchain_pem)
+        get_alt_chains = self.config.preferred_chain is not None
+        orderr = self.acme.finalize_order(orderr, deadline,
+                                          fetch_alternative_chains=get_alt_chains)
+        fullchain = orderr.fullchain_pem
+        if get_alt_chains and orderr.alternative_fullchains_pem:
+            fullchain = crypto_util.find_chain_with_issuer([fullchain] + \
+                                                           orderr.alternative_fullchains_pem,
+                                                           self.config.preferred_chain,
+                                                           not self.config.dry_run)
+        cert, chain = crypto_util.cert_and_chain_from_fullchain(fullchain)
         return cert.encode(), chain.encode()
 
     def obtain_certificate(self, domains, old_keypath=None):
@@ -309,7 +312,6 @@ class Client(object):
         :rtype: tuple
 
         """
-
         # We need to determine the key path, key PEM data, CSR path,
         # and CSR PEM data.  For a dry run, the paths are None because
         # they aren't permanently saved to disk.  For a lineage with
@@ -332,21 +334,46 @@ class Client(object):
             # The key is set to None here but will be created below.
             key = None
 
+        key_size = self.config.rsa_key_size
+        elliptic_curve = None
+
+        # key-type defaults to a list, but we are only handling 1 currently
+        if isinstance(self.config.key_type, list):
+            self.config.key_type = self.config.key_type[0]
+        if self.config.elliptic_curve and self.config.key_type == 'ecdsa':
+            elliptic_curve = self.config.elliptic_curve
+            self.config.auth_chain_path = "./chain-ecdsa.pem"
+            self.config.auth_cert_path = "./cert-ecdsa.pem"
+            self.config.key_path = "./key-ecdsa.pem"
+        elif self.config.rsa_key_size and self.config.key_type.lower() == 'rsa':
+            key_size = self.config.rsa_key_size
+
         # Create CSR from names
         if self.config.dry_run:
-            key = key or util.Key(file=None,
-                                  pem=crypto_util.make_key(self.config.rsa_key_size))
+            key = key or util.Key(
+                file=None,
+                pem=crypto_util.make_key(
+                    bits=key_size,
+                    elliptic_curve=elliptic_curve,
+                    key_type=self.config.key_type,
+
+                ),
+            )
             csr = util.CSR(file=None, form="pem",
                            data=acme_crypto_util.make_csr(
                                key.pem, domains, self.config.must_staple))
         else:
-            key = key or crypto_util.init_save_key(self.config.rsa_key_size,
-                                                   self.config.key_dir)
+            key = key or crypto_util.init_save_key(
+                key_size=key_size,
+                key_dir=self.config.key_dir,
+                key_type=self.config.key_type,
+                elliptic_curve=elliptic_curve,
+            )
             csr = crypto_util.init_save_csr(key, domains, self.config.csr_dir)
 
         orderr = self._get_order_and_authorizations(csr.data, self.config.allow_subset_of_names)
         authzr = orderr.authorizations
-        auth_domains = set(a.body.identifier.value for a in authzr)  # pylint: disable=not-an-iterable
+        auth_domains = set(a.body.identifier.value for a in authzr)
         successful_domains = [d for d in domains if d in auth_domains]
 
         # allow_subset_of_names is currently disabled for wildcard
@@ -361,7 +388,6 @@ class Client(object):
             return self.obtain_certificate(successful_domains)
         else:
             cert, chain = self.obtain_certificate_from_csr(csr, orderr)
-
             return cert, chain, key, csr
 
     def _get_order_and_authorizations(self, csr_pem, best_effort):
@@ -395,7 +421,6 @@ class Client(object):
         authzr = self.auth_handler.handle_authorizations(orderr, best_effort)
         return orderr.update(authorizations=authzr)
 
-    # pylint: disable=no-member
     def obtain_and_enroll_certificate(self, domains, certname):
         """Obtain and enroll certificate.
 
@@ -527,12 +552,13 @@ class Client(object):
             # sites may have been enabled / final cleanup
             self.installer.restart()
 
-    def enhance_config(self, domains, chain_path, ask_redirect=True):
+    def enhance_config(self, domains, chain_path, redirect_default=True):
         """Enhance the configuration.
 
         :param list domains: list of domains to configure
         :param chain_path: chain file path
         :type chain_path: `str` or `None`
+        :param redirect_default: boolean value that the "redirect" flag should default to
 
         :raises .errors.Error: if no installer is specified in the
             client.
@@ -554,14 +580,8 @@ class Client(object):
         for config_name, enhancement_name, option in enhancement_info:
             config_value = getattr(self.config, config_name)
             if enhancement_name in supported:
-                if ask_redirect:
-                    if config_name == "redirect" and config_value is None:
-                        config_value = enhancements.ask(enhancement_name)
-                        if not config_value:
-                            logger.warning("Future versions of Certbot will automatically "
-                                "configure the webserver so that all requests redirect to secure "
-                                "HTTPS access. You can control this behavior and disable this "
-                                "warning with the --redirect and --no-redirect flags.")
+                if config_name == "redirect" and config_value is None:
+                    config_value = redirect_default
                 if config_value:
                     self.apply_enhancement(domains, enhancement_name, option)
                     enhanced = True

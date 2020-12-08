@@ -1,18 +1,16 @@
 """Test certbot_apache._internal.display_ops."""
 import unittest
 
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock # type: ignore
 
 from certbot import errors
-
 from certbot.display import util as display_util
-
 from certbot.tests import util as certbot_util
-
 from certbot_apache._internal import obj
-
 from certbot_apache._internal.display_ops import select_vhost_multiple
-
 import util
 
 
@@ -98,9 +96,9 @@ class SelectVhostTest(unittest.TestCase):
 
         self.vhosts.append(
             obj.VirtualHost(
-                "path", "aug_path", set([obj.Addr.fromstring("*:80")]),
+                "path", "aug_path", {obj.Addr.fromstring("*:80")},
                 False, False,
-                "wildcard.com", set(["*.wildcard.com"])))
+                "wildcard.com", {"*.wildcard.com"}))
 
         self.assertEqual(self.vhosts[5], self._call(self.vhosts))
 

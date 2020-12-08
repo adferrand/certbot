@@ -10,15 +10,17 @@ import tempfile
 import unittest
 
 import josepy as jose
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock
 import six
 
 from acme import challenges
-
 from certbot import achallenges
 from certbot import errors
-from certbot.compat import os
 from certbot.compat import filesystem
+from certbot.compat import os
 from certbot.display import util as display_util
 from certbot.tests import acme_util
 from certbot.tests import util as test_util

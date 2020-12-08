@@ -2,11 +2,14 @@
 
 import unittest
 
-import mock
 from googleapiclient import discovery
 from googleapiclient.errors import Error
 from googleapiclient.http import HttpMock
 from httplib2 import ServerNotFoundError
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock # type: ignore
 
 from certbot import errors
 from certbot.compat import os
@@ -103,6 +106,17 @@ class GoogleClientTest(unittest.TestCase):
         _GoogleClient(None)
         self.assertFalse(credential_mock.called)
         self.assertTrue(get_project_id_mock.called)
+
+    @mock.patch('oauth2client.service_account.ServiceAccountCredentials.from_json_keyfile_name')
+    def test_client_bad_credentials_file(self, credential_mock):
+        credential_mock.side_effect = ValueError('Some exception buried in oauth2client')
+        with self.assertRaises(errors.PluginError) as cm:
+            self._setUp_client_with_mock([])
+        self.assertEqual(
+            str(cm.exception),
+            "Error parsing credentials file '/not/a/real/path.json': "
+            "Some exception buried in oauth2client"
+        )
 
     @mock.patch('oauth2client.service_account.ServiceAccountCredentials.from_json_keyfile_name')
     @mock.patch('certbot_dns_google._internal.dns_google.open',
@@ -288,7 +302,6 @@ class GoogleClientTest(unittest.TestCase):
     def test_get_existing_fallback(self, unused_credential_mock):
         client, unused_changes = self._setUp_client_with_mock(
             [{'managedZones': [{'id': self.zone}]}])
-        # pylint: disable=no-member
         mock_execute = client.dns.resourceRecordSets.return_value.list.return_value.execute
         mock_execute.side_effect = API_ERROR
 

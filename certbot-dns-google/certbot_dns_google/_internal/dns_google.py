@@ -2,11 +2,11 @@
 import json
 import logging
 
-import httplib2
-import zope.interface
 from googleapiclient import discovery
 from googleapiclient import errors as googleapiclient_errors
+import httplib2
 from oauth2client.service_account import ServiceAccountCredentials
+import zope.interface
 
 from certbot import errors
 from certbot import interfaces
@@ -45,7 +45,7 @@ class Authenticator(dns_common.DNSAuthenticator):
                   'required permissions.)').format(ACCT_URL, PERMISSIONS_URL),
             default=None)
 
-    def more_info(self): # pylint: disable=missing-docstring,no-self-use
+    def more_info(self): # pylint: disable=missing-function-docstring
         return 'This plugin configures a DNS TXT record to respond to a dns-01 challenge using ' + \
                'the Google Cloud DNS API.'
 
@@ -85,9 +85,13 @@ class _GoogleClient(object):
 
         scopes = ['https://www.googleapis.com/auth/ndev.clouddns.readwrite']
         if account_json is not None:
-            credentials = ServiceAccountCredentials.from_json_keyfile_name(account_json, scopes)
-            with open(account_json) as account:
-                self.project_id = json.load(account)['project_id']
+            try:
+                credentials = ServiceAccountCredentials.from_json_keyfile_name(account_json, scopes)
+                with open(account_json) as account:
+                    self.project_id = json.load(account)['project_id']
+            except Exception as e:
+                raise errors.PluginError(
+                    "Error parsing credentials file '{}': {}".format(account_json, e))
         else:
             credentials = None
             self.project_id = self.get_project_id()
@@ -148,7 +152,7 @@ class _GoogleClient(object):
                 },
             ]
 
-        changes = self.dns.changes()  # changes | pylint: disable=no-member
+        changes = self.dns.changes()
 
         try:
             request = changes.create(project=self.project_id, managedZone=zone_id, body=data)
@@ -213,7 +217,7 @@ class _GoogleClient(object):
                 },
             ]
 
-        changes = self.dns.changes()  # changes | pylint: disable=no-member
+        changes = self.dns.changes()
 
         try:
             request = changes.create(project=self.project_id, managedZone=zone_id, body=data)
@@ -235,7 +239,7 @@ class _GoogleClient(object):
         :rtype: `list` of `string` or `None`
 
         """
-        rrs_request = self.dns.resourceRecordSets()  # pylint: disable=no-member
+        rrs_request = self.dns.resourceRecordSets()
         request = rrs_request.list(managedZone=zone_id, project=self.project_id)
         # Add dot as the API returns absolute domains
         record_name += "."
@@ -264,7 +268,7 @@ class _GoogleClient(object):
 
         zone_dns_name_guesses = dns_common.base_domain_name_guesses(domain)
 
-        mz = self.dns.managedZones()  # managedZones | pylint: disable=no-member
+        mz = self.dns.managedZones()
         for zone_name in zone_dns_name_guesses:
             try:
                 request = mz.list(project=self.project_id, dnsName=zone_name + '.')

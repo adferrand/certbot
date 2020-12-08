@@ -1,15 +1,16 @@
 """Test for certbot_apache._internal.configurator for Gentoo overrides"""
 import unittest
 
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock # type: ignore
 
 from certbot import errors
 from certbot.compat import filesystem
 from certbot.compat import os
-
 from certbot_apache._internal import obj
 from certbot_apache._internal import override_gentoo
-
 import util
 
 
@@ -23,19 +24,19 @@ def get_vh_truth(temp_dir, config_name):
         obj.VirtualHost(
             os.path.join(prefix, "gentoo.example.com.conf"),
             os.path.join(aug_pre, "gentoo.example.com.conf/VirtualHost"),
-            set([obj.Addr.fromstring("*:80")]),
+            {obj.Addr.fromstring("*:80")},
             False, True, "gentoo.example.com"),
         obj.VirtualHost(
             os.path.join(prefix, "00_default_vhost.conf"),
             os.path.join(aug_pre, "00_default_vhost.conf/IfDefine/VirtualHost"),
-            set([obj.Addr.fromstring("*:80")]),
+            {obj.Addr.fromstring("*:80")},
             False, True, "localhost"),
         obj.VirtualHost(
             os.path.join(prefix, "00_default_ssl_vhost.conf"),
             os.path.join(aug_pre,
                          "00_default_ssl_vhost.conf" +
                          "/IfDefine/IfDefine/IfModule/VirtualHost"),
-            set([obj.Addr.fromstring("_default_:443")]),
+            {obj.Addr.fromstring("_default_:443")},
             True, True, "localhost")
     ]
     return vh_truth
@@ -90,9 +91,9 @@ class MultipleVhostsTestGentoo(util.ApacheTest):
         with mock.patch("certbot_apache._internal.override_gentoo.GentooParser.update_modules"):
             self.config.parser.update_runtime_variables()
         for define in defines:
-            self.assertTrue(define in self.config.parser.variables.keys())
+            self.assertTrue(define in self.config.parser.variables)
 
-    @mock.patch("certbot_apache._internal.parser.ApacheParser.parse_from_subprocess")
+    @mock.patch("certbot_apache._internal.apache_util.parse_from_subprocess")
     def test_no_binary_configdump(self, mock_subprocess):
         """Make sure we don't call binary dumps other than modules from Apache
         as this is not supported in Gentoo currently"""
@@ -106,7 +107,7 @@ class MultipleVhostsTestGentoo(util.ApacheTest):
         self.config.parser.reset_modules()
         self.assertTrue(mock_subprocess.called)
 
-    @mock.patch("certbot_apache._internal.parser.ApacheParser._get_runtime_cfg")
+    @mock.patch("certbot_apache._internal.apache_util._get_runtime_cfg")
     def test_opportunistic_httpd_runtime_parsing(self, mock_get):
         mod_val = (
             'Loaded Modules:\n'
@@ -119,7 +120,7 @@ class MultipleVhostsTestGentoo(util.ApacheTest):
                 return mod_val
             return None  # pragma: no cover
         mock_get.side_effect = mock_get_cfg
-        self.config.parser.modules = set()
+        self.config.parser.modules = {}
 
         with mock.patch("certbot.util.get_os_info") as mock_osi:
             # Make sure we have the have the Gentoo httpd constants

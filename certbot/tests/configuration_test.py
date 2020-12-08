@@ -1,10 +1,13 @@
 """Tests for certbot._internal.configuration."""
 import unittest
 
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock
 
-from certbot._internal import constants
 from certbot import errors
+from certbot._internal import constants
 from certbot.compat import misc
 from certbot.compat import os
 from certbot.tests import util as test_util

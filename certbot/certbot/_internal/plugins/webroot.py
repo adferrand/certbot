@@ -1,7 +1,6 @@
 """Webroot plugin."""
 import argparse
 import collections
-import errno
 import json
 import logging
 
@@ -9,17 +8,17 @@ import six
 import zope.component
 import zope.interface
 
-from acme import challenges  # pylint: disable=unused-import
-# pylint: disable=unused-import, no-name-in-module
-from acme.magic_typing import Dict, Set, DefaultDict, List
-# pylint: enable=unused-import, no-name-in-module
-
+from acme import challenges
+from acme.magic_typing import DefaultDict
+from acme.magic_typing import Dict
+from acme.magic_typing import List
+from acme.magic_typing import Set
 from certbot import achallenges  # pylint: disable=unused-import
-from certbot._internal import cli
 from certbot import errors
 from certbot import interfaces
-from certbot.compat import os
+from certbot._internal import cli
 from certbot.compat import filesystem
+from certbot.compat import os
 from certbot.display import ops
 from certbot.display import util as display_util
 from certbot.plugins import common
@@ -42,7 +41,7 @@ necessary validation resources to appropriate paths on the file
 system. It expects that there is some other HTTP server configured
 to serve all files under specified web root ({0})."""
 
-    def more_info(self):  # pylint: disable=missing-docstring,no-self-use
+    def more_info(self):  # pylint: disable=missing-function-docstring
         return self.MORE_INFO.format(self.conf("path"))
 
     @classmethod
@@ -64,21 +63,21 @@ to serve all files under specified web root ({0})."""
                  '{"example.com":"/var/www"}.')
 
     def get_chall_pref(self, domain):  # pragma: no cover
-        # pylint: disable=missing-docstring,no-self-use,unused-argument
+        # pylint: disable=unused-argument,missing-function-docstring
         return [challenges.HTTP01]
 
     def __init__(self, *args, **kwargs):
         super(Authenticator, self).__init__(*args, **kwargs)
         self.full_roots = {}  # type: Dict[str, str]
         self.performed = collections.defaultdict(set) \
-        # type: DefaultDict[str, Set[achallenges.KeyAuthorizationAnnotatedChallenge]]
+            # type: DefaultDict[str, Set[achallenges.KeyAuthorizationAnnotatedChallenge]]
         # stack of dirs successfully created by this authenticator
         self._created_dirs = []  # type: List[str]
 
-    def prepare(self):  # pylint: disable=missing-docstring
+    def prepare(self):  # pylint: disable=missing-function-docstring
         pass
 
-    def perform(self, achalls):  # pylint: disable=missing-docstring
+    def perform(self, achalls):  # pylint: disable=missing-function-docstring
         self._set_webroots(achalls)
 
         self._create_challenge_dirs()
@@ -135,10 +134,9 @@ to serve all files under specified web root ({0})."""
                 raise errors.PluginError(
                     "Every requested domain must have a "
                     "webroot when using the webroot plugin.")
-            else:  # code == display_util.OK
-                return None if index == 0 else known_webroots[index - 1]
+            return None if index == 0 else known_webroots[index - 1]  # code == display_util.OK
 
-    def _prompt_for_new_webroot(self, domain, allowraise=False):
+    def _prompt_for_new_webroot(self, domain, allowraise=False):  # pylint: no-self-use
         code, webroot = ops.validated_directory(
             _validate_webroot,
             "Input the webroot for {0}:".format(domain),
@@ -146,12 +144,10 @@ to serve all files under specified web root ({0})."""
         if code == display_util.CANCEL:
             if not allowraise:
                 return None
-            else:
-                raise errors.PluginError(
-                    "Every requested domain must have a "
-                    "webroot when using the webroot plugin.")
-        else:  # code == display_util.OK
-            return _validate_webroot(webroot)
+            raise errors.PluginError(
+                "Every requested domain must have a "
+                "webroot when using the webroot plugin.")
+        return _validate_webroot(webroot)  # code == display_util.OK
 
     def _create_challenge_dirs(self):
         path_map = self.conf("map")
@@ -168,11 +164,15 @@ to serve all files under specified web root ({0})."""
             # Change the permissions to be writable (GH #1389)
             # Umask is used instead of chmod to ensure the client can also
             # run as non-root (GH #1795)
-            old_umask = os.umask(0o022)
+            old_umask = filesystem.umask(0o022)
             try:
                 # We ignore the last prefix in the next iteration,
                 # as it does not correspond to a folder path ('/' or 'C:')
                 for prefix in sorted(util.get_prefixes(self.full_roots[name])[:-1], key=len):
+                    if os.path.isdir(prefix):
+                        # Don't try to create directory if it already exists, as some filesystems
+                        # won't reliably raise EEXIST or EISDIR if directory exists.
+                        continue
                     try:
                         # Set owner as parent directory if possible, apply mode for Linux/Windows.
                         # For Linux, this is coupled with the "umask" call above because
@@ -187,14 +187,13 @@ to serve all files under specified web root ({0})."""
                             logger.info("Unable to change owner and uid of webroot directory")
                             logger.debug("Error was: %s", exception)
                     except OSError as exception:
-                        if exception.errno not in (errno.EEXIST, errno.EISDIR):
-                            raise errors.PluginError(
-                                "Couldn't create root for {0} http-01 "
-                                "challenge responses: {1}".format(name, exception))
+                        raise errors.PluginError(
+                            "Couldn't create root for {0} http-01 "
+                            "challenge responses: {1}".format(name, exception))
             finally:
-                os.umask(old_umask)
+                filesystem.umask(old_umask)
 
-    def _get_validation_path(self, root_path, achall):
+    def _get_validation_path(self, root_path, achall):  # pylint: no-self-use
         return os.path.join(root_path, achall.chall.encode("token"))
 
     def _perform_single(self, achall):
@@ -205,18 +204,18 @@ to serve all files under specified web root ({0})."""
         logger.debug("Attempting to save validation to %s", validation_path)
 
         # Change permissions to be world-readable, owner-writable (GH #1795)
-        old_umask = os.umask(0o022)
+        old_umask = filesystem.umask(0o022)
 
         try:
             with safe_open(validation_path, mode="wb", chmod=0o644) as validation_file:
                 validation_file.write(validation.encode())
         finally:
-            os.umask(old_umask)
+            filesystem.umask(old_umask)
 
         self.performed[root_path].add(achall)
         return response
 
-    def cleanup(self, achalls):  # pylint: disable=missing-docstring
+    def cleanup(self, achalls):  # pylint: disable=missing-function-docstring
         for achall in achalls:
             root_path = self.full_roots.get(achall.domain, None)
             if root_path is not None:

@@ -1,12 +1,10 @@
 """Null plugin."""
 import logging
 
-import zope.component
 import zope.interface
 
 from certbot import interfaces
 from certbot.plugins import common
-
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +17,7 @@ class Installer(common.Plugin):
     description = "Null Installer"
     hidden = True
 
-    # pylint: disable=missing-docstring,no-self-use
+    # pylint: disable=missing-function-docstring
 
     def prepare(self):
         pass  # pragma: no cover

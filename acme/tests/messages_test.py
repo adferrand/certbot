@@ -2,11 +2,12 @@
 import unittest
 
 import josepy as jose
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock # type: ignore
 
 from acme import challenges
-from acme.magic_typing import Dict # pylint: disable=unused-import, no-name-in-module
-
 import test_util
 
 CERT = test_util.load_comparable_cert('cert.der')
@@ -19,8 +20,7 @@ class ErrorTest(unittest.TestCase):
 
     def setUp(self):
         from acme.messages import Error, ERROR_PREFIX
-        self.error = Error(
-            detail='foo', typ=ERROR_PREFIX + 'malformed', title='title')
+        self.error = Error.with_code('malformed', detail='foo', title='title')
         self.jobj = {
             'detail': 'foo',
             'title': 'some title',
@@ -28,7 +28,6 @@ class ErrorTest(unittest.TestCase):
         }
         self.error_custom = Error(typ='custom', detail='bar')
         self.empty_error = Error()
-        self.jobj_custom = {'type': 'custom', 'detail': 'bar'}
 
     def test_default_typ(self):
         from acme.messages import Error
@@ -43,8 +42,7 @@ class ErrorTest(unittest.TestCase):
         hash(Error.from_json(self.error.to_json()))
 
     def test_description(self):
-        self.assertEqual(
-            'The request message was malformed', self.error.description)
+        self.assertEqual('The request message was malformed', self.error.description)
         self.assertTrue(self.error_custom.description is None)
 
     def test_code(self):
@@ -54,17 +52,17 @@ class ErrorTest(unittest.TestCase):
         self.assertEqual(None, Error().code)
 
     def test_is_acme_error(self):
-        from acme.messages import is_acme_error
+        from acme.messages import is_acme_error, Error
         self.assertTrue(is_acme_error(self.error))
         self.assertFalse(is_acme_error(self.error_custom))
+        self.assertFalse(is_acme_error(Error()))
         self.assertFalse(is_acme_error(self.empty_error))
         self.assertFalse(is_acme_error("must pet all the {dogs|rabbits}"))
 
     def test_unicode_error(self):
-        from acme.messages import Error, ERROR_PREFIX, is_acme_error
-        arabic_error = Error(
-                detail=u'\u0639\u062f\u0627\u0644\u0629', typ=ERROR_PREFIX + 'malformed',
-            title='title')
+        from acme.messages import Error, is_acme_error
+        arabic_error = Error.with_code(
+            'malformed', detail=u'\u0639\u062f\u0627\u0644\u0629', title='title')
         self.assertTrue(is_acme_error(arabic_error))
 
     def test_with_code(self):
@@ -110,11 +108,11 @@ class ConstantTest(unittest.TestCase):
 
     def test_equality(self):
         const_a_prime = self.MockConstant('a')
-        self.assertFalse(self.const_a == self.const_b)
-        self.assertTrue(self.const_a == const_a_prime)
+        self.assertNotEqual(self.const_a, self.const_b)
+        self.assertEqual(self.const_a, const_a_prime)
 
-        self.assertTrue(self.const_a != self.const_b)
-        self.assertFalse(self.const_a != const_a_prime)
+        self.assertNotEqual(self.const_a, self.const_b)
+        self.assertEqual(self.const_a, const_a_prime)
 
 
 class DirectoryTest(unittest.TestCase):
@@ -256,6 +254,19 @@ class RegistrationTest(unittest.TestCase):
         from acme.messages import Registration
         hash(Registration.from_json(self.jobj_from))
 
+    def test_default_not_transmitted(self):
+        from acme.messages import NewRegistration
+        empty_new_reg = NewRegistration()
+        new_reg_with_contact = NewRegistration(contact=())
+
+        self.assertEqual(empty_new_reg.contact, ())
+        self.assertEqual(new_reg_with_contact.contact, ())
+
+        self.assertTrue('contact' not in empty_new_reg.to_partial_json())
+        self.assertTrue('contact' not in empty_new_reg.fields_to_partial_json())
+        self.assertTrue('contact' in new_reg_with_contact.to_partial_json())
+        self.assertTrue('contact' in new_reg_with_contact.fields_to_partial_json())
+
 
 class UpdateRegistrationTest(unittest.TestCase):
     """Tests for acme.messages.UpdateRegistration."""
@@ -305,8 +316,7 @@ class ChallengeBodyTest(unittest.TestCase):
         from acme.messages import Error
         from acme.messages import STATUS_INVALID
         self.status = STATUS_INVALID
-        error = Error(typ='urn:ietf:params:acme:error:serverInternal',
-                      detail='Unable to communicate with DNS server')
+        error = Error.with_code('serverInternal', detail='Unable to communicate with DNS server')
         self.challb = ChallengeBody(
             uri='http://challb', chall=self.chall, status=self.status,
             error=error)
@@ -458,6 +468,7 @@ class OrderResourceTest(unittest.TestCase):
             'authorizations': None,
         })
 
+
 class NewOrderTest(unittest.TestCase):
     """Tests for acme.messages.NewOrder."""
 
@@ -470,6 +481,19 @@ class NewOrderTest(unittest.TestCase):
         self.assertEqual(self.reg.to_json(), {
             'identifiers': mock.sentinel.identifiers,
         })
+
+
+class JWSPayloadRFC8555Compliant(unittest.TestCase):
+    """Test for RFC8555 compliance of JWS generated from resources/challenges"""
+    def test_message_payload(self):
+        from acme.messages import NewAuthorization
+
+        new_order = NewAuthorization()
+        new_order.le_acme_version = 2
+
+        jobj = new_order.json_dumps(indent=2).encode()
+        # RFC8555 states that JWS bodies must not have a resource field.
+        self.assertEqual(jobj, b'{}')
 
 
 if __name__ == '__main__':

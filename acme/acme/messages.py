@@ -1,18 +1,22 @@
 """ACME protocol messages."""
 import json
-import six
-try:
-    from collections.abc import Hashable  # pylint: disable=no-name-in-module
-except ImportError:  # pragma: no cover
-    from collections import Hashable
 
 import josepy as jose
+import six
 
 from acme import challenges
 from acme import errors
 from acme import fields
-from acme import util
 from acme import jws
+from acme import util
+from acme.mixins import ResourceMixin
+
+try:
+    from collections.abc import Hashable
+except ImportError:  # pragma: no cover
+    from collections import Hashable
+
+
 
 OLD_ERROR_PREFIX = "urn:acme:error:"
 ERROR_PREFIX = "urn:ietf:params:acme:error:"
@@ -33,7 +37,7 @@ ERROR_CODES = {
                    ' domain'),
     'dns': 'There was a problem with a DNS query during identifier validation',
     'dnssec': 'The server could not validate a DNSSEC signed domain',
-    'incorrectResponse': 'Response recieved didn\'t match the challenge\'s requirements',
+    'incorrectResponse': 'Response received didn\'t match the challenge\'s requirements',
     # deprecate invalidEmail
     'invalidEmail': 'The provided email for a registration was invalid',
     'invalidContact': 'The provided contact URI was invalid',
@@ -143,7 +147,7 @@ class _Constant(jose.JSONDeSerializable, Hashable):  # type: ignore
         if jobj not in cls.POSSIBLE_NAMES:  # pylint: disable=unsupported-membership-test
             raise jose.DeserializationError(
                 '{0} not recognized'.format(cls.__name__))
-        return cls.POSSIBLE_NAMES[jobj]  # pylint: disable=unsubscriptable-object
+        return cls.POSSIBLE_NAMES[jobj]
 
     def __repr__(self):
         return '{0}({1})'.format(self.__class__.__name__, self.name)
@@ -202,7 +206,7 @@ class Directory(jose.JSONDeSerializable):
         external_account_required = jose.Field('externalAccountRequired', omitempty=True)
 
         def __init__(self, **kwargs):
-            kwargs = dict((self._internal_name(k), v) for k, v in kwargs.items())
+            kwargs = {self._internal_name(k): v for k, v in kwargs.items()}
             super(Directory.Meta, self).__init__(**kwargs)
 
         @property
@@ -242,13 +246,13 @@ class Directory(jose.JSONDeSerializable):
         try:
             return self[name.replace('_', '-')]
         except KeyError as error:
-            raise AttributeError(str(error) + ': ' + name)
+            raise AttributeError(str(error))
 
     def __getitem__(self, name):
         try:
             return self._jobj[self._canon_key(name)]
         except KeyError:
-            raise KeyError('Directory field not found')
+            raise KeyError('Directory field "' + self._canon_key(name) + '" not found')
 
     def to_partial_json(self):
         return self._jobj
@@ -311,6 +315,9 @@ class Registration(ResourceBody):
     # on new-reg key server ignores 'key' and populates it based on
     # JWS.signature.combined.jwk
     key = jose.Field('key', omitempty=True, decoder=jose.JWK.from_json)
+    # Contact field implements special behavior to allow messages that clear existing
+    # contacts while not expecting the `contact` field when loading from json.
+    # This is implemented in the constructor and *_json methods.
     contact = jose.Field('contact', omitempty=True, default=())
     agreement = jose.Field('agreement', omitempty=True)
     status = jose.Field('status', omitempty=True)
@@ -323,23 +330,72 @@ class Registration(ResourceBody):
 
     @classmethod
     def from_data(cls, phone=None, email=None, external_account_binding=None, **kwargs):
-        """Create registration resource from contact details."""
+        """
+        Create registration resource from contact details.
+
+        The `contact` keyword being passed to a Registration object is meaningful, so
+        this function represents empty iterables in its kwargs by passing on an empty
+        `tuple`.
+        """
+
+        # Note if `contact` was in kwargs.
+        contact_provided = 'contact' in kwargs
+
+        # Pop `contact` from kwargs and add formatted email or phone numbers
         details = list(kwargs.pop('contact', ()))
         if phone is not None:
             details.append(cls.phone_prefix + phone)
         if email is not None:
             details.extend([cls.email_prefix + mail for mail in email.split(',')])
-        kwargs['contact'] = tuple(details)
+
+        # Insert formatted contact information back into kwargs
+        # or insert an empty tuple if `contact` provided.
+        if details or contact_provided:
+            kwargs['contact'] = tuple(details)
 
         if external_account_binding:
             kwargs['external_account_binding'] = external_account_binding
 
         return cls(**kwargs)
 
+    def __init__(self, **kwargs):
+        """Note if the user provides a value for the `contact` member."""
+        if 'contact' in kwargs:
+            # Avoid the __setattr__ used by jose.TypedJSONObjectWithFields
+            object.__setattr__(self, '_add_contact', True)
+        super(Registration, self).__init__(**kwargs)
+
     def _filter_contact(self, prefix):
         return tuple(
             detail[len(prefix):] for detail in self.contact  # pylint: disable=not-an-iterable
             if detail.startswith(prefix))
+
+    def _add_contact_if_appropriate(self, jobj):
+        """
+        The `contact` member of Registration objects should not be required when
+        de-serializing (as it would be if the Fields' `omitempty` flag were `False`), but
+        it should be included in serializations if it was provided.
+
+        :param jobj: Dictionary containing this Registrations' data
+        :type jobj: dict
+
+        :returns: Dictionary containing Registrations data to transmit to the server
+        :rtype: dict
+        """
+        if getattr(self, '_add_contact', False):
+            jobj['contact'] = self.encode('contact')
+
+        return jobj
+
+    def to_partial_json(self):
+        """Modify josepy.JSONDeserializable.to_partial_json()"""
+        jobj = super(Registration, self).to_partial_json()
+        return self._add_contact_if_appropriate(jobj)
+
+    def fields_to_partial_json(self):
+        """Modify josepy.JSONObjectWithFields.fields_to_partial_json()"""
+        jobj = super(Registration, self).fields_to_partial_json()
+        return self._add_contact_if_appropriate(jobj)
 
     @property
     def phones(self):
@@ -353,13 +409,13 @@ class Registration(ResourceBody):
 
 
 @Directory.register
-class NewRegistration(Registration):
+class NewRegistration(ResourceMixin, Registration):
     """New registration."""
     resource_type = 'new-reg'
     resource = fields.Resource(resource_type)
 
 
-class UpdateRegistration(Registration):
+class UpdateRegistration(ResourceMixin, Registration):
     """Update registration."""
     resource_type = 'reg'
     resource = fields.Resource(resource_type)
@@ -409,7 +465,7 @@ class ChallengeBody(ResourceBody):
                        omitempty=True, default=None)
 
     def __init__(self, **kwargs):
-        kwargs = dict((self._internal_name(k), v) for k, v in kwargs.items())
+        kwargs = {self._internal_name(k): v for k, v in kwargs.items()}
         super(ChallengeBody, self).__init__(**kwargs)
 
     def encode(self, name):
@@ -457,7 +513,6 @@ class ChallengeResource(Resource):
     @property
     def uri(self):
         """The URL of the challenge body."""
-        # pylint: disable=function-redefined,no-member
         return self.body.uri
 
 
@@ -485,7 +540,7 @@ class Authorization(ResourceBody):
     wildcard = jose.Field('wildcard', omitempty=True)
 
     @challenges.decoder
-    def challenges(value):  # pylint: disable=missing-docstring,no-self-argument
+    def challenges(value):  # pylint: disable=no-self-argument,missing-function-docstring
         return tuple(ChallengeBody.from_json(chall) for chall in value)
 
     @property
@@ -496,13 +551,13 @@ class Authorization(ResourceBody):
 
 
 @Directory.register
-class NewAuthorization(Authorization):
+class NewAuthorization(ResourceMixin, Authorization):
     """New authorization."""
     resource_type = 'new-authz'
     resource = fields.Resource(resource_type)
 
 
-class UpdateAuthorization(Authorization):
+class UpdateAuthorization(ResourceMixin, Authorization):
     """Update authorization."""
     resource_type = 'authz'
     resource = fields.Resource(resource_type)
@@ -520,7 +575,7 @@ class AuthorizationResource(ResourceWithURI):
 
 
 @Directory.register
-class CertificateRequest(jose.JSONObjectWithFields):
+class CertificateRequest(ResourceMixin, jose.JSONObjectWithFields):
     """ACME new-cert request.
 
     :ivar josepy.util.ComparableX509 csr:
@@ -546,7 +601,7 @@ class CertificateResource(ResourceWithURI):
 
 
 @Directory.register
-class Revocation(jose.JSONObjectWithFields):
+class Revocation(ResourceMixin, jose.JSONObjectWithFields):
     """Revocation message.
 
     :ivar .ComparableX509 certificate: `OpenSSL.crypto.X509` wrapped in
@@ -563,9 +618,11 @@ class Revocation(jose.JSONObjectWithFields):
 class Order(ResourceBody):
     """Order Resource Body.
 
-    :ivar list of .Identifier: List of identifiers for the certificate.
+    :ivar identifiers: List of identifiers for the certificate.
+    :vartype identifiers: `list` of `.Identifier`
     :ivar acme.messages.Status status:
-    :ivar list of str authorizations: URLs of authorizations.
+    :ivar authorizations: URLs of authorizations.
+    :vartype authorizations: `list` of `str`
     :ivar str certificate: URL to download certificate as a fullchain PEM.
     :ivar str finalize: URL to POST to to request issuance once all
         authorizations have "valid" status.
@@ -582,7 +639,7 @@ class Order(ResourceBody):
     error = jose.Field('error', omitempty=True, decoder=Error.from_json)
 
     @identifiers.decoder
-    def identifiers(value):  # pylint: disable=missing-docstring,no-self-argument
+    def identifiers(value):  # pylint: disable=no-self-argument,missing-function-docstring
         return tuple(Identifier.from_json(identifier) for identifier in value)
 
 class OrderResource(ResourceWithURI):
@@ -590,15 +647,20 @@ class OrderResource(ResourceWithURI):
 
     :ivar acme.messages.Order body:
     :ivar str csr_pem: The CSR this Order will be finalized with.
-    :ivar list of acme.messages.AuthorizationResource authorizations:
-        Fully-fetched AuthorizationResource objects.
+    :ivar authorizations: Fully-fetched AuthorizationResource objects.
+    :vartype authorizations: `list` of `acme.messages.AuthorizationResource`
     :ivar str fullchain_pem: The fetched contents of the certificate URL
         produced once the order was finalized, if it's present.
+    :ivar alternative_fullchains_pem: The fetched contents of alternative certificate
+        chain URLs produced once the order was finalized, if present and requested during
+        finalization.
+    :vartype alternative_fullchains_pem: `list` of `str`
     """
     body = jose.Field('body', decoder=Order.from_json)
     csr_pem = jose.Field('csr_pem', omitempty=True)
     authorizations = jose.Field('authorizations')
     fullchain_pem = jose.Field('fullchain_pem', omitempty=True)
+    alternative_fullchains_pem = jose.Field('alternative_fullchains_pem', omitempty=True)
 
 @Directory.register
 class NewOrder(Order):

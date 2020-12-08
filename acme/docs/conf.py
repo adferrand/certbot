@@ -12,10 +12,8 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
 import os
-import shlex
-
+import sys
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -42,7 +40,7 @@ extensions = [
 ]
 
 autodoc_member_order = 'bysource'
-autodoc_default_flags = ['show-inheritance', 'private-members']
+autodoc_default_flags = ['show-inheritance']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -114,7 +112,7 @@ pygments_style = 'sphinx'
 #keep_warnings = False
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = True
+todo_include_todos = False
 
 
 # -- Options for HTML output ----------------------------------------------
@@ -122,7 +120,7 @@ todo_include_todos = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 
-# http://docs.readthedocs.org/en/latest/theme.html#how-do-i-use-this-locally-and-on-read-the-docs
+# https://docs.readthedocs.io/en/stable/faq.html#i-want-to-use-the-read-the-docs-theme-locally
 # on_rtd is whether we are on readthedocs.org
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if not on_rtd:  # only import and set the theme if we're building docs locally

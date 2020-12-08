@@ -3,19 +3,20 @@ import functools
 import logging
 import unittest
 
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock
 import zope.component
 
 from acme import challenges
 from acme import client as acme_client
-from acme import messages
 from acme import errors as acme_errors
-
+from acme import messages
 from certbot import achallenges
 from certbot import errors
 from certbot import interfaces
 from certbot import util
-
 from certbot.tests import acme_util
 from certbot.tests import util as test_util
 
@@ -496,7 +497,7 @@ class ReportFailedAuthzrsTest(unittest.TestCase):
         self.authzr1.body.identifier.value = 'example.com'
         self.authzr1.body.challenges = [http_01, http_01]
 
-        kwargs["error"] = messages.Error(typ="dnssec", detail="detail")
+        kwargs["error"] = messages.Error.with_code("dnssec", detail="detail")
         http_01_diff = messages.ChallengeBody(**kwargs)
 
         self.authzr2 = mock.MagicMock()
@@ -509,7 +510,7 @@ class ReportFailedAuthzrsTest(unittest.TestCase):
 
         auth_handler._report_failed_authzrs([self.authzr1], 'key')
         call_list = mock_zope().add_message.call_args_list
-        self.assertTrue(len(call_list) == 1)
+        self.assertEqual(len(call_list), 1)
         self.assertTrue("Domain: example.com\nType:   tls\nDetail: detail" in call_list[0][0][0])
 
     @test_util.patch_get_utility()
@@ -517,7 +518,7 @@ class ReportFailedAuthzrsTest(unittest.TestCase):
         from certbot._internal import auth_handler
 
         auth_handler._report_failed_authzrs([self.authzr1, self.authzr2], 'key')
-        self.assertTrue(mock_zope().add_message.call_count == 2)
+        self.assertEqual(mock_zope().add_message.call_count, 2)
 
 
 def gen_auth_resp(chall_list):

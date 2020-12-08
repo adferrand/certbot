@@ -2,18 +2,22 @@
 import copy
 import functools
 import glob
+import io
 import logging
 import re
-import pyparsing
 
+import pyparsing
 import six
 
+from acme.magic_typing import Dict
+from acme.magic_typing import List
+from acme.magic_typing import Set
+from acme.magic_typing import Tuple
+from acme.magic_typing import Union
 from certbot import errors
 from certbot.compat import os
-
-from certbot_nginx._internal import obj
 from certbot_nginx._internal import nginxparser
-from acme.magic_typing import Union, Dict, Set, Any, List, Tuple # pylint: disable=unused-import, no-name-in-module
+from certbot_nginx._internal import obj
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +128,6 @@ class NginxParser(object):
         return servers
 
     def get_vhosts(self):
-        # pylint: disable=cell-var-from-loop
         """Gets list of all 'virtual hosts' found in Nginx configuration.
         Technically this is a misnomer because Nginx does not have virtual
         hosts, it has 'server blocks'.
@@ -203,12 +206,16 @@ class NginxParser(object):
             if item in self.parsed and not override:
                 continue
             try:
-                with open(item) as _file:
+                with io.open(item, "r", encoding="utf-8") as _file:
                     parsed = nginxparser.load(_file)
                     self.parsed[item] = parsed
                     trees.append(parsed)
             except IOError:
                 logger.warning("Could not open file: %s", item)
+            except UnicodeDecodeError:
+                logger.warning("Could not read file: %s due to invalid "
+                               "character. Only UTF-8 encoding is "
+                               "supported.", item)
             except pyparsing.ParseException as err:
                 logger.debug("Could not parse file: %s due to %s", item, err)
         return trees
@@ -242,7 +249,7 @@ class NginxParser(object):
                     continue
                 out = nginxparser.dumps(tree)
                 logger.debug('Writing nginx conf tree to %s:\n%s', filename, out)
-                with open(filename, 'w') as _file:
+                with io.open(filename, 'w', encoding='utf-8') as _file:
                     _file.write(out)
 
             except IOError:
@@ -272,7 +279,7 @@ class NginxParser(object):
         for directive in server:
             if not directive:
                 continue
-            elif _is_ssl_on_directive(directive):
+            if _is_ssl_on_directive(directive):
                 return True
 
         return False
@@ -397,9 +404,9 @@ class NginxParser(object):
                 if directive and directive[0] == 'listen':
                     # Exclude one-time use parameters which will cause an error if repeated.
                     # https://nginx.org/en/docs/http/ngx_http_core_module.html#listen
-                    exclude = set(('default_server', 'default', 'setfib', 'fastopen', 'backlog',
+                    exclude = {'default_server', 'default', 'setfib', 'fastopen', 'backlog',
                                    'rcvbuf', 'sndbuf', 'accept_filter', 'deferred', 'bind',
-                                   'ipv6only', 'reuseport', 'so_keepalive'))
+                                   'ipv6only', 'reuseport', 'so_keepalive'}
 
                     for param in exclude:
                         # See: github.com/certbot/certbot/pull/6223#pullrequestreview-143019225
@@ -412,10 +419,13 @@ class NginxParser(object):
 def _parse_ssl_options(ssl_options):
     if ssl_options is not None:
         try:
-            with open(ssl_options) as _file:
+            with io.open(ssl_options, "r", encoding="utf-8") as _file:
                 return nginxparser.load(_file)
         except IOError:
             logger.warning("Missing NGINX TLS options file: %s", ssl_options)
+        except UnicodeDecodeError:
+            logger.warning("Could not read file: %s due to invalid character. "
+                           "Only UTF-8 encoding is supported.", ssl_options)
         except pyparsing.ParseBaseException as err:
             logger.debug("Could not parse file: %s due to %s", ssl_options, err)
     return []
@@ -486,7 +496,8 @@ def get_best_match(target_name, names):
 
 
 def _exact_match(target_name, name):
-    return target_name == name or '.' + target_name == name
+    target_lower = target_name.lower()
+    return name.lower() in (target_lower, '.' + target_lower)
 
 
 def _wildcard_match(target_name, name, start):
@@ -504,14 +515,14 @@ def _wildcard_match(target_name, name, start):
 
     # The first part must be a wildcard or blank, e.g. '.eff.org'
     first = match_parts.pop(0)
-    if first != '*' and first != '':
+    if first not in ('*', ''):
         return False
 
-    target_name = '.'.join(parts)
-    name = '.'.join(match_parts)
+    target_name_lower = '.'.join(parts).lower()
+    name_lower = '.'.join(match_parts).lower()
 
     # Ex: www.eff.org matches *.eff.org, eff.org does not match *.eff.org
-    return target_name.endswith('.' + name)
+    return target_name_lower.endswith('.' + name_lower)
 
 
 def _regex_match(target_name, name):
@@ -568,7 +579,7 @@ def _update_or_add_directives(directives, insert_at_top, block):
 
 
 INCLUDE = 'include'
-REPEATABLE_DIRECTIVES = set(['server_name', 'listen', INCLUDE, 'rewrite', 'add_header'])
+REPEATABLE_DIRECTIVES = {'server_name', 'listen', INCLUDE, 'rewrite', 'add_header'}
 COMMENT = ' managed by Certbot'
 COMMENT_BLOCK = [' ', '#', COMMENT]
 
@@ -582,7 +593,7 @@ def comment_directive(block, location):
     if isinstance(next_entry, list) and next_entry:
         if len(next_entry) >= 2 and next_entry[-2] == "#" and COMMENT in next_entry[-1]:
             return
-        elif isinstance(next_entry, nginxparser.UnspacedList):
+        if isinstance(next_entry, nginxparser.UnspacedList):
             next_entry = next_entry.spaced[0]
         else:
             next_entry = next_entry[0]
@@ -658,13 +669,12 @@ def _add_directive(block, directive, insert_at_top):
         for included_directive in included_directives:
             included_dir_loc = _find_location(block, included_directive[0])
             included_dir_name = included_directive[0]
-            if not _is_whitespace_or_comment(included_directive) \
-                and not can_append(included_dir_loc, included_dir_name):
+            if (not _is_whitespace_or_comment(included_directive)
+                    and not can_append(included_dir_loc, included_dir_name)):
                 if block[included_dir_loc] != included_directive:
                     raise errors.MisconfigurationError(err_fmt.format(included_directive,
                         block[included_dir_loc]))
-                else:
-                    _comment_out_directive(block, included_dir_loc, directive[1])
+                _comment_out_directive(block, included_dir_loc, directive[1])
 
     if can_append(location, directive_name):
         if insert_at_top:

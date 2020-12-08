@@ -6,12 +6,11 @@ import logging
 import sys
 import textwrap
 
-from six.moves import queue  # type: ignore  # pylint: disable=import-error
+from six.moves import queue  # type: ignore
 import zope.interface
 
 from certbot import interfaces
 from certbot import util
-
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class Reporter(object):
     _msg_type = collections.namedtuple('ReporterMsg', 'priority text on_crash')
 
     def __init__(self, config):
-        self.messages = queue.PriorityQueue()
+        self.messages = queue.PriorityQueue()  # type: queue.PriorityQueue[Reporter._msg_type]
         self.config = config
 
     def add_message(self, msg, priority, on_crash=True):

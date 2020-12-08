@@ -8,7 +8,6 @@ from certbot._internal import constants
 from certbot_compatibility_test import errors
 from certbot_compatibility_test import util
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -44,8 +43,7 @@ class Proxy(object):
         method = getattr(self._configurator, name, None)
         if callable(method):
             return method
-        else:
-            raise AttributeError()
+        raise AttributeError()
 
     def has_more_configs(self):
         """Returns true if there are more configs to test"""
@@ -71,11 +69,10 @@ class Proxy(object):
         shutil.copy(cert_path, cert)
         key = os.path.join(cert_and_key_dir, "key")
         shutil.copy(key_path, key)
+        chain = None
         if chain_path:
             chain = os.path.join(cert_and_key_dir, "chain")
             shutil.copy(chain_path, chain)
-        else:
-            chain = None
 
         return cert, key, chain
 
@@ -83,8 +80,7 @@ class Proxy(object):
         """Returns the set of domain names that the plugin should find"""
         if self._all_names:
             return self._all_names
-        else:
-            raise errors.Error("No configuration file loaded")
+        raise errors.Error("No configuration file loaded")
 
     def get_testable_domain_names(self):
         """Returns the set of domain names that can be tested against"""
