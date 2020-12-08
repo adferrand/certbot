@@ -23,6 +23,7 @@ class IntegrationTestsContext(certbot_context.IntegrationTestsContext):
                    '-e', 'TLS_ALPN_01_PORT={0}'.format(self.tls_alpn_01_port),
                    '-e', 'HTTP_01_PORT={0}'.format(self.http_01_port),
                    '-e', 'LE_SUFFIX={0}.wtf'.format(self.worker_id),
+                   '-v', '/sys/fs/cgroup:/sys/fs/cgroup:ro',
                    '-v', '{0}:/workspace'.format(self.workspace),
                    '-v', '{0}:/certbot'.format(CERTBOT_PROJECT_DIR),
                    '-w', '/workspace',
