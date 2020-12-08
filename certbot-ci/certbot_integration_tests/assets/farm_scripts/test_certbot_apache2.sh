@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+set -xe
 
 PUBLIC_HOSTNAME="test.${LE_SUFFIX}"
 
@@ -17,8 +17,6 @@ elif yum --version >/dev/null 2>&1; then
   setenforce 0 || true
   yum -y install httpd
   yum -y install nghttp2 || true
-  /usr/libexec/httpd-ssl-gencerts
-  service httpd start
   mkdir -p "/var/www/${PUBLIC_HOSTNAME}/public_html"
   chmod -R oug+rwx /var/www
   chmod -R oug+rw /etc/httpd
