@@ -18,7 +18,7 @@ class IntegrationTestsContext(certbot_context.IntegrationTestsContext):
     def run_test(self, docker_image, test_path):
         directory_url = self.directory_url.replace('localhost', '172.17.0.1')
 
-        command = ['docker', 'run', '--rm',
+        command = ['docker', 'run', '--rm', '--privileged',
                    '-e', 'DIRECTORY_URL={0}'.format(directory_url),
                    '-e', 'TLS_ALPN_01_PORT={0}'.format(self.tls_alpn_01_port),
                    '-e', 'HTTP_01_PORT={0}'.format(self.http_01_port),
