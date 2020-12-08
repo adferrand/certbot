@@ -1,16 +1,17 @@
 #!/bin/bash
 set -x
 
+PUBLIC_HOSTNAME="test.${LE_SUFFIX}"
+
 if apt-get -v >/dev/null 2>&1; then
   apt-get update
   apt-get -y --no-upgrade install apache2
   apt-get -y install realpath
 
-  CONFFILE=/etc/apache2/sites-available/000-default.conf
-  PUBLIC_HOSTNAME="test.${LE_SUFFIX}"
-  sed -i '/VirtualHost/ s/*:80/*:'"${HTTP_01_PORT}"'/' $CONFFILE
-  sed -i '/ServerName/ s/#ServerName/ServerName/' $CONFFILE
-  sed -i '/ServerName/ s/www.example.com/'"${PUBLIC_HOSTNAME}"'/' $CONFFILE
+  CONF_FILE=/etc/apache2/sites-available/000-default.conf
+  sed -i '/VirtualHost/ s/*:80/*:'"${HTTP_01_PORT}"'/' "${CONF_FILE}"
+  sed -i '/ServerName/ s/#ServerName/ServerName/' "${CONF_FILE}"
+  sed -i '/ServerName/ s/www.example.com/'"${PUBLIC_HOSTNAME}"'/' "${CONF_FILE}"
   cat /etc/apache2/sites-available/000-default.conf
 elif yum --version >/dev/null 2>&1; then
   setenforce 0 || true
