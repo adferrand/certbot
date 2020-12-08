@@ -45,7 +45,7 @@ class IntegrationTestsContext(certbot_context.IntegrationTestsContext):
 
 @pytest.mark.parametrize('docker_image, test_name',
                          [(docker_image, test_name)
-                          for docker_image in ['ubuntu:18.04']
+                          for docker_image in ['centos:7']
                           for test_name in ['test_certbot_apache2.sh']])
 def test_hello_world(request, docker_image, test_name):
     context = IntegrationTestsContext(request)
