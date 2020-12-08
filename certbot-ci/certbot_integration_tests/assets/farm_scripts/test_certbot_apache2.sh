@@ -23,7 +23,6 @@ elif yum --version >/dev/null 2>&1; then
   curl https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl.py -o /usr/bin/systemctl
   chmod +x /usr/bin/systemctl
   yum -y install httpd
-  yum -y install nghttp2 || true
   systemctl start httpd
   mkdir -p "/var/www/${PUBLIC_HOSTNAME}/public_html"
   chmod -R oug+rwx /var/www
