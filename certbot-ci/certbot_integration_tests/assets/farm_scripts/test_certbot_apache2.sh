@@ -7,6 +7,7 @@ apt-get -y install realpath
 
 CONFFILE=/etc/apache2/sites-available/000-default.conf
 PUBLIC_HOSTNAME="test.${LE_SUFFIX}"
+sed -i '/VirtualHost/ s/*:80/*:'"${HTTP_01_PORT}"'/' $CONFFILE
 sed -i '/ServerName/ s/#ServerName/ServerName/' $CONFFILE
 sed -i '/ServerName/ s/www.example.com/'"${PUBLIC_HOSTNAME}"'/' $CONFFILE
 cat /etc/apache2/sites-available/000-default.conf
