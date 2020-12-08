@@ -16,7 +16,7 @@ if apt-get -v >/dev/null 2>&1; then
 elif yum --version >/dev/null 2>&1; then
   setenforce 0 || true
   curl https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl.py -o /usr/bin/systemctl
-  chmod +x /usr/local/bin/systemctl
+  chmod +x /usr/bin/systemctl
   yum -y install httpd
   yum -y install nghttp2 || true
   systemctl start httpd
