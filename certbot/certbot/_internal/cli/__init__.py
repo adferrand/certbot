@@ -1,11 +1,15 @@
 """Certbot command line argument & config processing."""
 # pylint: disable=too-many-lines
 import argparse
+from argparse import Namespace
 import logging
 import logging.handlers
 import sys
+from typing import List
 from typing import Optional
+from typing import Union
 
+from _io import StringIO
 import certbot
 from certbot._internal import constants
 from certbot._internal.cli.cli_constants import ARGPARSE_PARAMS_TO_REMOVE
@@ -44,9 +48,9 @@ from certbot._internal.cli.subparsers import _create_subparsers
 from certbot._internal.cli.verb_help import VERB_HELP
 from certbot._internal.cli.verb_help import VERB_HELP_MAP
 from certbot._internal.plugins import disco as plugins_disco
+from certbot._internal.plugins.disco import PluginsRegistry
 import certbot._internal.plugins.selection as plugin_selection
 import certbot.plugins.enhancements as enhancements
-
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +59,7 @@ logger = logging.getLogger(__name__)
 helpful_parser: Optional[HelpfulArgumentParser] = None
 
 
-def prepare_and_parse_args(plugins, args, detect_defaults=False):
+def prepare_and_parse_args(plugins: PluginsRegistry, args: Union[List[str], str], detect_defaults: Union[StringIO, bool] = False) -> Namespace:
     """Returns parsed command line arguments.
 
     :param .PluginsRegistry plugins: available plugins
@@ -436,7 +440,7 @@ def prepare_and_parse_args(plugins, args, detect_defaults=False):
     return helpful.parse_args()
 
 
-def set_by_cli(var):
+def set_by_cli(var: str) -> bool:
     """
     Return True if a particular config variable has been set by the user
     (CLI or config file) including if the user explicitly set it to the
@@ -479,7 +483,7 @@ def set_by_cli(var):
 set_by_cli.detector = None  # type: ignore
 
 
-def has_default_value(option, value):
+def has_default_value(option: str, value: Union[None, bool, str]) -> bool:
     """Does option have the default value?
 
     If the default value of option is not known, False is returned.
@@ -497,7 +501,7 @@ def has_default_value(option, value):
     return False
 
 
-def option_was_set(option, value):
+def option_was_set(option: str, value: Union[None, int, str]) -> bool:
     """Was option set by the user or does it differ from the default?
 
     :param str option: configuration variable being considered

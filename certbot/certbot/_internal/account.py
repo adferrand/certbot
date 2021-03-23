@@ -5,9 +5,17 @@ import hashlib
 import logging
 import shutil
 import socket
+from typing import Any
+from typing import Callable
+from typing import List
+from typing import Optional
+from typing import Union
+from unittest.mock import Mock
 
 from cryptography.hazmat.primitives import serialization
 import josepy as jose
+from josepy.jwk import JWKRSA
+from mypy_extensions import NoReturn
 import pyrfc3339
 import pytz
 
@@ -18,6 +26,8 @@ from certbot import errors
 from certbot import interfaces
 from certbot import util
 from certbot._internal import constants
+from certbot._internal.account import Account
+from certbot._internal.configuration import NamespaceConfig
 from certbot.compat import filesystem
 from certbot.compat import os
 
@@ -50,7 +60,7 @@ class Account:
         creation_host = jose.Field("creation_host")
         register_to_eff = jose.Field("register_to_eff", omitempty=True)
 
-    def __init__(self, regr, key, meta=None):
+    def __init__(self, regr: Any, key: JWKRSA, meta: Optional[Account.Meta] = None) -> None:
         self.key = key
         self.regr = regr
         self.meta = self.Meta(
@@ -78,16 +88,16 @@ class Account:
         # account key (and thus its fingerprint) to be updated...
 
     @property
-    def slug(self):
+    def slug(self) -> str:
         """Short account identification string, useful for UI."""
         return "{1}@{0} ({2})".format(pyrfc3339.generate(
             self.meta.creation_dt), self.meta.creation_host, self.id[:4])
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<{0}({1}, {2}, {3})>".format(
             self.__class__.__name__, self.regr, self.id, self.meta)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Account) -> bool:
         return (isinstance(other, self.__class__) and
                 self.key == other.key and self.regr == other.regr and
                 self.meta == other.meta)
@@ -96,18 +106,18 @@ class Account:
 class AccountMemoryStorage(interfaces.AccountStorage):
     """In-memory account storage."""
 
-    def __init__(self, initial_accounts=None):
+    def __init__(self, initial_accounts: Optional[Any] = None) -> None:
         self.accounts = initial_accounts if initial_accounts is not None else {}
 
-    def find_all(self):
+    def find_all(self) -> List[Mock]:
         return list(self.accounts.values())
 
-    def save(self, account, client):
+    def save(self, account: Account, client: Optional[Any]) -> None:
         if account.id in self.accounts:
             logger.debug("Overwriting account: %s", account.id)
         self.accounts[account.id] = account
 
-    def load(self, account_id):
+    def load(self, account_id: str) -> NoReturn:
         try:
             return self.accounts[account_id]
         except KeyError:
@@ -130,30 +140,30 @@ class AccountFileStorage(interfaces.AccountStorage):
     :ivar .IConfig config: Client configuration
 
     """
-    def __init__(self, config):
+    def __init__(self, config: NamespaceConfig) -> None:
         self.config = config
         util.make_or_verify_dir(config.accounts_dir, 0o700, self.config.strict_permissions)
 
-    def _account_dir_path(self, account_id):
+    def _account_dir_path(self, account_id: str) -> str:
         return self._account_dir_path_for_server_path(account_id, self.config.server_path)
 
-    def _account_dir_path_for_server_path(self, account_id, server_path):
+    def _account_dir_path_for_server_path(self, account_id: str, server_path: str) -> str:
         accounts_dir = self.config.accounts_dir_for_server_path(server_path)
         return os.path.join(accounts_dir, account_id)
 
     @classmethod
-    def _regr_path(cls, account_dir_path):
+    def _regr_path(cls, account_dir_path: str) -> str:
         return os.path.join(account_dir_path, "regr.json")
 
     @classmethod
-    def _key_path(cls, account_dir_path):
+    def _key_path(cls, account_dir_path: str) -> str:
         return os.path.join(account_dir_path, "private_key.json")
 
     @classmethod
-    def _metadata_path(cls, account_dir_path):
+    def _metadata_path(cls, account_dir_path: str) -> str:
         return os.path.join(account_dir_path, "meta.json")
 
-    def _find_all_for_server_path(self, server_path):
+    def _find_all_for_server_path(self, server_path: str) -> Union[List[Account], List[str]]:
         accounts_dir = self.config.accounts_dir_for_server_path(server_path)
         try:
             candidates = os.listdir(accounts_dir)
@@ -180,15 +190,15 @@ class AccountFileStorage(interfaces.AccountStorage):
             accounts = prev_accounts
         return accounts
 
-    def find_all(self):
+    def find_all(self) -> Union[List[Account], List[str]]:
         return self._find_all_for_server_path(self.config.server_path)
 
-    def _symlink_to_account_dir(self, prev_server_path, server_path, account_id):
+    def _symlink_to_account_dir(self, prev_server_path: str, server_path: str, account_id: str) -> None:
         prev_account_dir = self._account_dir_path_for_server_path(account_id, prev_server_path)
         new_account_dir = self._account_dir_path_for_server_path(account_id, server_path)
         os.symlink(prev_account_dir, new_account_dir)
 
-    def _symlink_to_accounts_dir(self, prev_server_path, server_path):
+    def _symlink_to_accounts_dir(self, prev_server_path: str, server_path: str) -> None:
         accounts_dir = self.config.accounts_dir_for_server_path(server_path)
         if os.path.islink(accounts_dir):
             os.unlink(accounts_dir)
@@ -197,7 +207,7 @@ class AccountFileStorage(interfaces.AccountStorage):
         prev_account_dir = self.config.accounts_dir_for_server_path(prev_server_path)
         os.symlink(prev_account_dir, accounts_dir)
 
-    def _load_for_server_path(self, account_id, server_path):
+    def _load_for_server_path(self, account_id: str, server_path: str) -> Account:
         account_dir_path = self._account_dir_path_for_server_path(account_id, server_path)
         if not os.path.isdir(account_dir_path): # isdir is also true for symlinks
             if server_path in constants.LE_REUSE_SERVERS:
@@ -226,7 +236,7 @@ class AccountFileStorage(interfaces.AccountStorage):
 
         return Account(regr, key, meta)
 
-    def load(self, account_id):
+    def load(self, account_id: str) -> Account:
         return self._load_for_server_path(account_id, self.config.server_path)
 
     def save(self, account: Account, client: ClientBase) -> None:
@@ -269,7 +279,7 @@ class AccountFileStorage(interfaces.AccountStorage):
         except IOError as error:
             raise errors.AccountStorageError(error)
 
-    def delete(self, account_id):
+    def delete(self, account_id: str) -> None:
         """Delete registration info from disk
 
         :param account_id: id of account which should be deleted
@@ -286,17 +296,17 @@ class AccountFileStorage(interfaces.AccountStorage):
         if not os.listdir(self.config.accounts_dir):
             self._delete_accounts_dir_for_server_path(self.config.server_path)
 
-    def _delete_account_dir_for_server_path(self, account_id, server_path):
+    def _delete_account_dir_for_server_path(self, account_id: str, server_path: str) -> None:
         link_func = functools.partial(self._account_dir_path_for_server_path, account_id)
         nonsymlinked_dir = self._delete_links_and_find_target_dir(server_path, link_func)
         shutil.rmtree(nonsymlinked_dir)
 
-    def _delete_accounts_dir_for_server_path(self, server_path):
+    def _delete_accounts_dir_for_server_path(self, server_path: str) -> None:
         link_func = self.config.accounts_dir_for_server_path
         nonsymlinked_dir = self._delete_links_and_find_target_dir(server_path, link_func)
         os.rmdir(nonsymlinked_dir)
 
-    def _delete_links_and_find_target_dir(self, server_path, link_func):
+    def _delete_links_and_find_target_dir(self, server_path: str, link_func: Callable) -> str:
         """Delete symlinks and return the nonsymlinked directory path.
 
         :param str server_path: file path based on server
@@ -362,6 +372,6 @@ class AccountFileStorage(interfaces.AccountStorage):
                     uri=regr.uri)
             regr_file.write(regr.json_dumps())
 
-    def _update_meta(self, account, dir_path):
+    def _update_meta(self, account: Account, dir_path: str) -> None:
         with open(self._metadata_path(dir_path), "w") as metadata_file:
             metadata_file.write(account.meta.json_dumps())

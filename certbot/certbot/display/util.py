@@ -13,6 +13,7 @@ import logging
 import sys
 import textwrap
 from typing import List
+from typing import Optional
 
 import zope.component
 import zope.interface
@@ -458,7 +459,7 @@ class FileDisplay:
         return OK, selection
 
 
-def assert_valid_call(prompt, default, cli_flag, force_interactive):
+def assert_valid_call(prompt: str, default: Optional[bool], cli_flag: Optional[str], force_interactive: bool) -> None:
     """Verify that provided arguments is a valid IDisplay call.
 
     :param str prompt: prompt for the user

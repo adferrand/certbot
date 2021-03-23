@@ -7,9 +7,11 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Union
 
 from certbot import errors
+from certbot.achallenges import KeyAuthorizationAnnotatedChallenge
 from certbot.compat import os
 
 logger = logging.getLogger(__name__)
@@ -74,7 +76,7 @@ class ErrorHandler:
     deferred until they finish.
 
     """
-    def __init__(self, func, *args, **kwargs):
+    def __init__(self, func: Callable, *args: Any, **kwargs: Any) -> None:
         self.call_on_regular_exit = False
         self.body_executed = False
         self.funcs: List[Callable[[], Any]] = []
@@ -83,11 +85,11 @@ class ErrorHandler:
         if func is not None:
             self.register(func, *args, **kwargs)
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         self.body_executed = False
         self._set_signal_handlers()
 
-    def __exit__(self, exec_type, exec_value, trace):
+    def __exit__(self, exec_type: Optional[type], exec_value: Any, trace: Optional[traceback]) -> bool:
         self.body_executed = True
         retval = False
         # SystemExit is ignored to properly handle forks that don't exec
@@ -116,7 +118,7 @@ class ErrorHandler:
         """
         self.funcs.append(functools.partial(func, *args, **kwargs))
 
-    def _call_registered(self):
+    def _call_registered(self) -> None:
         """Calls all registered functions"""
         logger.debug("Calling registered functions")
         while self.funcs:
@@ -128,7 +130,7 @@ class ErrorHandler:
                              ''.join(output).rstrip())
             self.funcs.pop()
 
-    def _set_signal_handlers(self):
+    def _set_signal_handlers(self) -> None:
         """Sets signal handlers for signals in _SIGNALS."""
         for signum in _SIGNALS:
             prev_handler = signal.getsignal(signum)
@@ -137,7 +139,7 @@ class ErrorHandler:
                 self.prev_handlers[signum] = prev_handler
                 signal.signal(signum, self._signal_handler)
 
-    def _reset_signal_handlers(self):
+    def _reset_signal_handlers(self) -> None:
         """Resets signal handlers for signals in _SIGNALS."""
         for signum in self.prev_handlers:
             signal.signal(signum, self.prev_handlers[signum])
@@ -156,7 +158,7 @@ class ErrorHandler:
         if not self.body_executed:
             raise errors.SignalExit
 
-    def _call_signals(self):
+    def _call_signals(self) -> None:
         """Finally call the deferred signals."""
         for signum in self.received_signals:
             logger.debug("Calling signal %s", signum)
@@ -169,6 +171,6 @@ class ExitHandler(ErrorHandler):
     In addition to cleaning up on all signals, also cleans up on
     regular exit.
     """
-    def __init__(self, func, *args, **kwargs):
+    def __init__(self, func: Callable, *args: List[KeyAuthorizationAnnotatedChallenge], **kwargs: Any) -> None:
         ErrorHandler.__init__(self, func, *args, **kwargs)
         self.call_on_regular_exit = True

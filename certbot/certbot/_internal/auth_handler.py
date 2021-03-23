@@ -2,19 +2,28 @@
 import datetime
 import logging
 import time
+from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Tuple
+from typing import Union
 
+from josepy.json_util import JSONObjectWithFieldsMeta
+from mypy_extensions import NoReturn
 import zope.component
 
 from acme import challenges
 from acme import errors as acme_errors
 from acme import messages
+from acme.messages import AuthorizationResource
+from acme.messages import ChallengeBody
 from certbot import achallenges
 from certbot import errors
 from certbot import interfaces
 from certbot._internal import error_handler
+from certbot.achallenges import KeyAuthorizationAnnotatedChallenge
+from certbot.util import Key
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +44,14 @@ class AuthHandler:
         type strings with the most preferred challenge listed first
 
     """
-    def __init__(self, auth, acme_client, account, pref_challs):
+    def __init__(self, auth: Optional[Any], acme_client: Optional[Any], account: Any, pref_challs: List) -> None:
         self.auth = auth
         self.acme = acme_client
 
         self.account = account
         self.pref_challs = pref_challs
 
-    def handle_authorizations(self, orderr, best_effort=False, max_retries=30):
+    def handle_authorizations(self, orderr: Any, best_effort: bool = False, max_retries: int = 30) -> List[AuthorizationResource]:
         """
         Retrieve all authorizations, perform all challenges required to validate
         these authorizations, then poll and wait for the authorization to be checked.
@@ -122,7 +131,7 @@ class AuthHandler:
 
         return (deactivated, failed)
 
-    def _poll_authorizations(self, authzrs, max_retries, best_effort):
+    def _poll_authorizations(self, authzrs: List[AuthorizationResource], max_retries: int, best_effort: bool) -> None:
         """
         Poll the ACME CA server, to wait for confirmation that authorizations have their challenges
         all verified. The poll may occur several times, until all authorizations are checked
@@ -182,7 +191,7 @@ class AuthHandler:
             # Here authzrs_to_check is still not empty, meaning we exceeded the max polling attempt.
             raise errors.AuthorizationError('All authorizations were not finalized by the CA.')
 
-    def _choose_challenges(self, authzrs):
+    def _choose_challenges(self, authzrs: List[AuthorizationResource]) -> List[KeyAuthorizationAnnotatedChallenge]:
         """
         Retrieve necessary and pending challenges to satisfy server.
         NB: Necessary and already validated challenges are not retrieved,
@@ -209,7 +218,7 @@ class AuthHandler:
 
         return achalls
 
-    def _get_chall_pref(self, domain):
+    def _get_chall_pref(self, domain: str) -> List[JSONObjectWithFieldsMeta]:
         """Return list of challenge preferences.
 
         :param str domain: domain for which you are requesting preferences
@@ -231,7 +240,7 @@ class AuthHandler:
         chall_prefs.extend(plugin_pref)
         return chall_prefs
 
-    def _cleanup_challenges(self, achalls):
+    def _cleanup_challenges(self, achalls: List[KeyAuthorizationAnnotatedChallenge]) -> None:
         """Cleanup challenges.
 
         :param achalls: annotated challenges to cleanup
@@ -241,7 +250,7 @@ class AuthHandler:
         logger.info("Cleaning up challenges")
         self.auth.cleanup(achalls)
 
-    def _challenge_factory(self, authzr, path):
+    def _challenge_factory(self, authzr: AuthorizationResource, path: Union[List[int], Tuple[int], range]) -> List[KeyAuthorizationAnnotatedChallenge]:
         """Construct Namedtuple Challenges
 
         :param messages.AuthorizationResource authzr: authorization
@@ -265,7 +274,7 @@ class AuthHandler:
         return achalls
 
 
-def challb_to_achall(challb, account_key, domain):
+def challb_to_achall(challb: ChallengeBody, account_key: Union[Key, str], domain: str) -> KeyAuthorizationAnnotatedChallenge:
     """Converts a ChallengeBody object to an AnnotatedChallenge.
 
     :param .ChallengeBody challb: ChallengeBody
@@ -288,7 +297,7 @@ def challb_to_achall(challb, account_key, domain):
         "Received unsupported challenge of type: {0}".format(chall.typ))
 
 
-def gen_challenge_path(challbs, preferences, combinations):
+def gen_challenge_path(challbs: Tuple[ChallengeBody, ...], preferences: List[JSONObjectWithFieldsMeta], combinations: Union[None, Tuple[Tuple[int, int]], Tuple[Tuple[int], ...]]) -> Union[List[int], Tuple[int]]:
     """Generate a plan to get authority over the identity.
 
     .. todo:: This can be possibly be rewritten to use resolved_combinations.
@@ -319,7 +328,7 @@ def gen_challenge_path(challbs, preferences, combinations):
     return _find_dumb_path(challbs, preferences)
 
 
-def _find_smart_path(challbs, preferences, combinations):
+def _find_smart_path(challbs: Tuple[ChallengeBody, ...], preferences: List[JSONObjectWithFieldsMeta], combinations: Union[Tuple[Tuple[int, int]], Tuple[Tuple[int], ...]]) -> Tuple[int]:
     """Find challenge path with server hints.
 
     Can be called if combinations is included. Function uses a simple
@@ -356,7 +365,7 @@ def _find_smart_path(challbs, preferences, combinations):
     return best_combo
 
 
-def _find_dumb_path(challbs, preferences):
+def _find_dumb_path(challbs: Tuple[ChallengeBody, ...], preferences: List[JSONObjectWithFieldsMeta]) -> List[int]:
     """Find challenge path without server hints.
 
     Should be called if the combinations hint is not included by the
@@ -377,7 +386,7 @@ def _find_dumb_path(challbs, preferences):
     return path
 
 
-def _report_no_chall_path(challbs):
+def _report_no_chall_path(challbs: Tuple[ChallengeBody, ...]) -> NoReturn:
     """Logs and raises an error that no satisfiable chall path exists.
 
     :param challbs: challenges from the authorization that can't be satisfied
@@ -425,7 +434,7 @@ _ERROR_HELP = {
 }
 
 
-def _report_failed_authzrs(failed_authzrs, account_key):
+def _report_failed_authzrs(failed_authzrs: List[Any], account_key: Union[Key, str]) -> None:
     """Notifies the user about failed authorizations."""
     problems: Dict[str, List[achallenges.AnnotatedChallenge]] = {}
     failed_achalls = [challb_to_achall(challb, account_key, authzr.body.identifier.value)
@@ -440,7 +449,7 @@ def _report_failed_authzrs(failed_authzrs, account_key):
         reporter.add_message(_generate_failed_chall_msg(achalls), reporter.MEDIUM_PRIORITY)
 
 
-def _generate_failed_chall_msg(failed_achalls):
+def _generate_failed_chall_msg(failed_achalls: List[KeyAuthorizationAnnotatedChallenge]) -> str:
     """Creates a user friendly error message about failed challenges.
 
     :param list failed_achalls: A list of failed

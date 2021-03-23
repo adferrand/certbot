@@ -5,14 +5,17 @@ import logging
 import re
 import shutil
 import stat
-
+from typing import List
 from typing import Optional
+from typing import Tuple
+
 import configobj
-import parsedatetime
-import pytz
+from configobj import ConfigObj
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
+import parsedatetime
+import pytz
 
 import certbot
 from certbot import crypto_util
@@ -23,6 +26,7 @@ from certbot import util
 from certbot._internal import cli
 from certbot._internal import constants
 from certbot._internal import error_handler
+from certbot._internal.configuration import NamespaceConfig
 from certbot._internal.plugins import disco as plugins_disco
 from certbot.compat import filesystem
 from certbot.compat import os
@@ -36,7 +40,7 @@ CURRENT_VERSION = util.get_strict_version(certbot.__version__)
 BASE_PRIVKEY_MODE = 0o600
 
 
-def renewal_conf_files(config):
+def renewal_conf_files(config: NamespaceConfig) -> List[str]:
     """Build a list of all renewal configuration files.
 
     :param certbot.interfaces.IConfig config: Configuration object
@@ -50,7 +54,7 @@ def renewal_conf_files(config):
     return result
 
 
-def renewal_file_for_certname(config, certname):
+def renewal_file_for_certname(config: NamespaceConfig, certname: str) -> str:
     """Return /path/to/certname.conf in the renewal conf directory"""
     path = os.path.join(config.renewal_configs_dir, "{0}.conf".format(certname))
     if not os.path.exists(path):
@@ -70,7 +74,7 @@ def cert_path_for_cert_name(config: interfaces.IConfig, cert_name: str) -> str:
     return configobj.ConfigObj(cert_name_implied_conf)["fullchain"]
 
 
-def config_with_defaults(config=None):
+def config_with_defaults(config: ConfigObj = None) -> ConfigObj:
     """Merge supplied config, if provided, on top of builtin defaults."""
     defaults_copy = configobj.ConfigObj(constants.RENEWER_DEFAULTS)
     defaults_copy.merge(config if config is not None else configobj.ConfigObj())
@@ -153,7 +157,7 @@ def write_renewal_config(o_filename, n_filename, archive_dir, target, relevant_d
     return config
 
 
-def rename_renewal_config(prev_name, new_name, cli_config):
+def rename_renewal_config(prev_name: str, new_name: str, cli_config: NamespaceConfig) -> None:
     """Renames cli_config.certname's config to cli_config.new_certname.
 
     :param .NamespaceConfig cli_config: parsed command line
@@ -199,7 +203,7 @@ def update_configuration(lineagename, archive_dir, target, cli_config):
     return configobj.ConfigObj(config_filename)
 
 
-def get_link_target(link):
+def get_link_target(link: str) -> str:
     """Get an absolute path to the target of link.
 
     :param str link: Path to a symbolic link
@@ -280,7 +284,7 @@ def relevant_values(all_values):
     rv["server"] = all_values["server"]
     return rv
 
-def lineagename_for_filename(config_filename):
+def lineagename_for_filename(config_filename: str) -> str:
     """Returns the lineagename for a configuration filename.
     """
     if not config_filename.endswith(".conf"):
@@ -288,16 +292,16 @@ def lineagename_for_filename(config_filename):
             "renewal config file name must end in .conf")
     return os.path.basename(config_filename[:-len(".conf")])
 
-def renewal_filename_for_lineagename(config, lineagename):
+def renewal_filename_for_lineagename(config: NamespaceConfig, lineagename: str) -> str:
     """Returns the lineagename for a configuration filename.
     """
     return os.path.join(config.renewal_configs_dir, lineagename) + ".conf"
 
-def _relpath_from_file(archive_dir, from_file):
+def _relpath_from_file(archive_dir: str, from_file: str) -> str:
     """Path to a directory from a file"""
     return os.path.relpath(archive_dir, os.path.dirname(from_file))
 
-def full_archive_path(config_obj, cli_config, lineagename):
+def full_archive_path(config_obj: ConfigObj, cli_config: NamespaceConfig, lineagename: str) -> str:
     """Returns the full archive path for a lineagename
 
     Uses cli_config to determine archive path if not available from config_obj.
@@ -415,7 +419,7 @@ class RenewableCert(interfaces.RenewableCert):
         renewal configuration file and/or systemwide defaults.
 
     """
-    def __init__(self, config_filename, cli_config, update_symlinks=False):
+    def __init__(self, config_filename: str, cli_config: NamespaceConfig, update_symlinks: bool = False) -> None:
         """Instantiate a RenewableCert object from an existing lineage.
 
         :param str config_filename: the path to the renewal config file
@@ -473,7 +477,7 @@ class RenewableCert(interfaces.RenewableCert):
         return self.privkey
 
     @property
-    def cert_path(self):
+    def cert_path(self) -> str:
         """Duck type for self.cert"""
         return self.cert
 
@@ -483,12 +487,12 @@ class RenewableCert(interfaces.RenewableCert):
         return self.chain
 
     @property
-    def fullchain_path(self):
+    def fullchain_path(self) -> str:
         """Duck type for self.fullchain"""
         return self.fullchain
 
     @property
-    def lineagename(self):
+    def lineagename(self) -> str:
         """Name given to the certificate lineage.
 
         :rtype: str
@@ -506,12 +510,12 @@ class RenewableCert(interfaces.RenewableCert):
         return crypto_util.notAfter(self.current_target("cert"))
 
     @property
-    def archive_dir(self):
+    def archive_dir(self) -> str:
         """Returns the default or specified archive directory"""
         return full_archive_path(self.configuration,
             self.cli_config, self.lineagename)
 
-    def relative_archive_dir(self, from_file):
+    def relative_archive_dir(self, from_file: str) -> str:
         """Returns the default or specified archive directory as a relative path
 
         Used for creating symbolic links.
@@ -530,7 +534,7 @@ class RenewableCert(interfaces.RenewableCert):
             return util.is_staging(self.server)
         return False
 
-    def _check_symlinks(self):
+    def _check_symlinks(self) -> None:
         """Raises an exception if a symlink doesn't exist"""
         for kind in ALL_FOUR:
             link = getattr(self, kind)
@@ -542,7 +546,7 @@ class RenewableCert(interfaces.RenewableCert):
                 raise errors.CertStorageError("target {0} of symlink {1} does "
                                               "not exist".format(target, link))
 
-    def _update_symlinks(self):
+    def _update_symlinks(self) -> None:
         """Updates symlinks to use archive_dir"""
         for kind in ALL_FOUR:
             link = getattr(self, kind)
@@ -639,7 +643,7 @@ class RenewableCert(interfaces.RenewableCert):
     #       happen as a result of random tampering by a sysadmin, or
     #       filesystem errors, or crashes.)
 
-    def _previous_symlinks(self):
+    def _previous_symlinks(self) -> List[Tuple[str, str]]:
         """Returns the kind and path of all symlinks used in recovery.
 
         :returns: list of (kind, symlink) tuples
@@ -654,7 +658,7 @@ class RenewableCert(interfaces.RenewableCert):
 
         return previous_symlinks
 
-    def _fix_symlinks(self):
+    def _fix_symlinks(self) -> None:
         """Fixes symlinks in the event of an incomplete version update.
 
         If there is no problem with the current symlinks, this function
@@ -673,7 +677,7 @@ class RenewableCert(interfaces.RenewableCert):
             if os.path.exists(link):
                 os.unlink(link)
 
-    def current_target(self, kind):
+    def current_target(self, kind: str) -> str:
         """Returns full path to which the specified item currently points.
 
         :param str kind: the lineage member item ("cert", "privkey",
@@ -875,7 +879,7 @@ class RenewableCert(interfaces.RenewableCert):
             for _, link in previous_links:
                 os.unlink(link)
 
-    def names(self):
+    def names(self) -> List[str]:
         """What are the subject names of this certificate?
 
         :returns: the subject names

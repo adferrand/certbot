@@ -2,18 +2,23 @@
 import base64
 import collections
 import datetime
+from datetime import datetime
 from email.utils import parsedate_tz
 import heapq
 import http.client as http_client
 import logging
 import re
 import time
+from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Set
 from typing import Text
 
 import josepy as jose
+from josepy.jwa import _JWARS
+from josepy.jwk import JWKRSA
 import OpenSSL
 import requests
 from requests.adapters import HTTPAdapter
@@ -166,7 +171,7 @@ class ClientBase:
         return challr
 
     @classmethod
-    def retry_after(cls, response, default):
+    def retry_after(cls, response: Any, default: int) -> datetime:
         """Compute next `poll` time based on response ``Retry-After`` header.
 
         Handles integers and various datestring formats per
@@ -962,9 +967,9 @@ class ClientNetwork:
     :param source_address: Optional source address to bind to when making requests.
     :type source_address: str or tuple(str, int)
     """
-    def __init__(self, key, account=None, alg=jose.RS256, verify_ssl=True,
-                 user_agent='acme-python', timeout=DEFAULT_NETWORK_TIMEOUT,
-                 source_address=None):
+    def __init__(self, key: JWKRSA, account: Optional[Any] = None, alg: _JWARS = jose.RS256, verify_ssl: bool = True,
+                 user_agent: str = 'acme-python', timeout: int = DEFAULT_NETWORK_TIMEOUT,
+                 source_address: Optional[Any] = None) -> None:
         self.key = key
         self.account = account
         self.alg = alg
@@ -981,7 +986,7 @@ class ClientNetwork:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
-    def __del__(self):
+    def __del__(self) -> None:
         # Try to close the session, but don't show exceptions to the
         # user if the call to close() fails. See #4840.
         try:

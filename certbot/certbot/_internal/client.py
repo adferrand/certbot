@@ -2,16 +2,24 @@
 import datetime
 import logging
 import platform
+from typing import Any
+from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Tuple
+from typing import Union
+from unittest.mock import _SentinelObject
+from unittest.mock import MagicMock
 
-from cryptography.hazmat.backends import default_backend
 # See https://github.com/pyca/cryptography/issues/4275
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key  # type: ignore
 import josepy as jose
+from josepy.jwk import JWKRSA
 import OpenSSL
 import zope.component
 
+from _io import BufferedWriter
 from acme import client as acme_client
 from acme import crypto_util as acme_crypto_util
 from acme import errors as acme_errors
@@ -28,14 +36,20 @@ from certbot._internal import constants
 from certbot._internal import eff
 from certbot._internal import error_handler
 from certbot._internal import storage
+from certbot._internal.account import Account
+from certbot._internal.account import AccountMemoryStorage
+from certbot._internal.client import DummyConfig
+from certbot._internal.configuration import NamespaceConfig
 from certbot._internal.plugins import selection as plugin_selection
 from certbot.compat import os
 from certbot.display import ops as display_ops
+from certbot.util import CSR
+from certbot.util import Key
 
 logger = logging.getLogger(__name__)
 
 
-def acme_from_config_key(config, key, regr=None):
+def acme_from_config_key(config: NamespaceConfig, key: JWKRSA, regr: Optional[Any] = None) -> Any:
     "Wrangle ACME client construction"
     # TODO: Allow for other alg types besides RS256
     net = acme_client.ClientNetwork(key, account=regr, verify_ssl=(not config.no_verify_ssl),
@@ -43,7 +57,7 @@ def acme_from_config_key(config, key, regr=None):
     return acme_client.BackwardsCompatibleClientV2(net, key, config.server)
 
 
-def determine_user_agent(config):
+def determine_user_agent(config: Union[DummyConfig, NamespaceConfig]) -> str:
     """
     Set a user_agent string in the config based on the choice of plugins.
     (this wasn't knowable at construction time)
@@ -74,7 +88,7 @@ def determine_user_agent(config):
         ua = config.user_agent
     return ua
 
-def ua_flags(config):
+def ua_flags(config: Union[DummyConfig, NamespaceConfig]) -> str:
     "Turn some very important CLI flags into clues in the user agent."
     if isinstance(config, DummyConfig):
         return "FLAGS"
@@ -95,23 +109,23 @@ def ua_flags(config):
 
 class DummyConfig:
     "Shim for computing a sample user agent."
-    def __init__(self):
+    def __init__(self) -> None:
         self.authenticator = "XXX"
         self.installer = "YYY"
         self.user_agent = None
         self.verb = "SUBCOMMAND"
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Optional[Any]:
         "Any config properties we might have are None."
         return None
 
-def sample_user_agent():
+def sample_user_agent() -> str:
     "Document what this Certbot's user agent string will be like."
 
     return determine_user_agent(DummyConfig())
 
 
-def register(config, account_storage, tos_cb=None):
+def register(config: NamespaceConfig, account_storage: AccountMemoryStorage, tos_cb: Any = None) -> Tuple[Account, MagicMock]:
     """Register new account with an ACME CA.
 
     This function takes care of generating fresh private key,
@@ -182,7 +196,7 @@ def register(config, account_storage, tos_cb=None):
     return acc, acme
 
 
-def perform_registration(acme, config, tos_cb):
+def perform_registration(acme: Any, config: NamespaceConfig, tos_cb: Any) -> Any:
     """
     Actually register new account, trying repeatedly if there are email
     problems
@@ -243,7 +257,7 @@ class Client:
 
     """
 
-    def __init__(self, config, account_, auth, installer, acme=None):
+    def __init__(self, config: NamespaceConfig, account_: Any, auth: Optional[Any], installer: Optional[Any], acme: Optional[Any] = None) -> None:
         """Initialize a client."""
         self.config = config
         self.account = account_
@@ -261,7 +275,7 @@ class Client:
         else:
             self.auth_handler = None
 
-    def obtain_certificate_from_csr(self, csr, orderr=None):
+    def obtain_certificate_from_csr(self, csr: CSR, orderr: Optional[Any] = None) -> Tuple[_SentinelObject, _SentinelObject]:
         """Obtain certificate.
 
         :param .util.CSR csr: PEM-encoded Certificate Signing
@@ -299,7 +313,7 @@ class Client:
         cert, chain = crypto_util.cert_and_chain_from_fullchain(fullchain)
         return cert.encode(), chain.encode()
 
-    def obtain_certificate(self, domains, old_keypath=None):
+    def obtain_certificate(self, domains: List[str], old_keypath: Optional[Any] = None) -> Tuple[_SentinelObject, _SentinelObject, Union[CSR, Key, _SentinelObject], CSR]:
         """Obtains a certificate from the ACME server.
 
         `.register` must be called before `.obtain_certificate`
@@ -421,7 +435,7 @@ class Client:
         authzr = self.auth_handler.handle_authorizations(orderr, best_effort)
         return orderr.update(authorizations=authzr)
 
-    def obtain_and_enroll_certificate(self, domains, certname):
+    def obtain_and_enroll_certificate(self, domains: List[str], certname: Optional[str]) -> Optional[Any]:
         """Obtain and enroll certificate.
 
         Get a new certificate for the specified domains using the specified
@@ -457,7 +471,7 @@ class Client:
             key.pem, chain,
             self.config)
 
-    def _choose_lineagename(self, domains, certname):
+    def _choose_lineagename(self, domains: List[str], certname: Optional[str]) -> str:
         """Chooses a name for the new lineage.
 
         :param domains: domains in certificate request
@@ -476,8 +490,8 @@ class Client:
             return domains[0][2:]
         return domains[0]
 
-    def save_certificate(self, cert_pem, chain_pem,
-                         cert_path, chain_path, fullchain_path):
+    def save_certificate(self, cert_pem: bytes, chain_pem: bytes,
+                         cert_path: str, chain_path: str, fullchain_path: str) -> Tuple[str, str, str]:
         """Saves the certificate received from the ACME server.
 
         :param str cert_pem:
@@ -516,8 +530,8 @@ class Client:
 
         return abs_cert_path, abs_chain_path, abs_fullchain_path
 
-    def deploy_certificate(self, domains, privkey_path,
-                           cert_path, chain_path, fullchain_path):
+    def deploy_certificate(self, domains: List[str], privkey_path: str,
+                           cert_path: str, chain_path: str, fullchain_path: str) -> None:
         """Install certificate
 
         :param list domains: list of domains to install the certificate
@@ -552,7 +566,7 @@ class Client:
             # sites may have been enabled / final cleanup
             self.installer.restart()
 
-    def enhance_config(self, domains, chain_path, redirect_default=True):
+    def enhance_config(self, domains: List[str], chain_path: Optional[Any], redirect_default: bool = True) -> None:
         """Enhance the configuration.
 
         :param list domains: list of domains to configure
@@ -595,7 +609,7 @@ class Client:
             with error_handler.ErrorHandler(self._rollback_and_restart, msg):
                 self.installer.restart()
 
-    def apply_enhancement(self, domains, enhancement, options=None):
+    def apply_enhancement(self, domains: List[str], enhancement: str, options: Optional[str] = None) -> None:
         """Applies an enhancement on all domains.
 
         :param list domains: list of ssl_vhosts (as strings)
@@ -630,7 +644,7 @@ class Client:
 
             self.installer.save("Add enhancement %s" % (enhancement))
 
-    def _recovery_routine_with_msg(self, success_msg):
+    def _recovery_routine_with_msg(self, success_msg: str) -> None:
         """Calls the installer's recovery routine and prints success_msg
 
         :param str success_msg: message to show on successful recovery
@@ -640,7 +654,7 @@ class Client:
         reporter = zope.component.getUtility(interfaces.IReporter)
         reporter.add_message(success_msg, reporter.HIGH_PRIORITY)
 
-    def _rollback_and_restart(self, success_msg):
+    def _rollback_and_restart(self, success_msg: str) -> None:
         """Rollback the most recent checkpoint and restart the webserver
 
         :param str success_msg: message to show on successful rollback
@@ -708,7 +722,7 @@ def validate_key_csr(privkey, csr=None):
                 raise errors.Error("The key and CSR do not match")
 
 
-def rollback(default_installer, checkpoints, config, plugins):
+def rollback(default_installer: Optional[Any], checkpoints: int, config: Dict, plugins: Any) -> None:
     """Revert configuration the specified number of checkpoints.
 
     :param int checkpoints: Number of checkpoints to revert.
@@ -729,7 +743,7 @@ def rollback(default_installer, checkpoints, config, plugins):
         installer.rollback_checkpoints(checkpoints)
         installer.restart()
 
-def _open_pem_file(cli_arg_path, pem_path):
+def _open_pem_file(cli_arg_path: str, pem_path: str) -> Tuple[BufferedWriter, str]:
     """Open a pem file.
 
     If cli_arg_path was set by the client, open that.
@@ -747,7 +761,7 @@ def _open_pem_file(cli_arg_path, pem_path):
     uniq = util.unique_file(pem_path, 0o644, "wb")
     return uniq[0], os.path.abspath(uniq[1])
 
-def _save_chain(chain_pem, chain_file):
+def _save_chain(chain_pem: bytes, chain_file: BufferedWriter) -> None:
     """Saves chain_pem at a unique path based on chain_path.
 
     :param str chain_pem: certificate chain in PEM format

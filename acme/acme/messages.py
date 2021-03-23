@@ -1,6 +1,8 @@
 """ACME protocol messages."""
-import json
 from collections.abc import Hashable
+import json
+from typing import Any
+from typing import Optional
 
 import josepy as jose
 
@@ -9,6 +11,9 @@ from acme import errors
 from acme import fields
 from acme import jws
 from acme import util
+from acme.messages import Error
+from acme.messages import NewRegistration
+from acme.messages import Status
 from acme.mixins import ResourceMixin
 
 OLD_ERROR_PREFIX = "urn:acme:error:"
@@ -54,7 +59,7 @@ ERROR_TYPE_DESCRIPTIONS.update(dict(  # add errors with old prefix, deprecate me
     (OLD_ERROR_PREFIX + name, desc) for name, desc in ERROR_CODES.items()))
 
 
-def is_acme_error(err):
+def is_acme_error(err: Error) -> bool:
     """Check if argument is an ACME error."""
     if isinstance(err, Error) and (err.typ is not None):
         return (ERROR_PREFIX in err.typ) or (OLD_ERROR_PREFIX in err.typ)
@@ -76,7 +81,7 @@ class Error(jose.JSONObjectWithFields, errors.Error):
     detail = jose.Field('detail', omitempty=True)
 
     @classmethod
-    def with_code(cls, code, **kwargs):
+    def with_code(cls, code: str, **kwargs: Any) -> Error:
         """Create an Error instance with an ACME Error code.
 
         :unicode code: An ACME error code, like 'dnssec'.
@@ -90,7 +95,7 @@ class Error(jose.JSONObjectWithFields, errors.Error):
         return cls(typ=typ, **kwargs)
 
     @property
-    def description(self):
+    def description(self) -> str:
         """Hardcoded error description based on its type.
 
         :returns: Description if standard ACME error or ``None``.
@@ -100,7 +105,7 @@ class Error(jose.JSONObjectWithFields, errors.Error):
         return ERROR_TYPE_DESCRIPTIONS.get(self.typ)
 
     @property
-    def code(self):
+    def code(self) -> str:
         """ACME error code.
 
         Basically self.typ without the ERROR_PREFIX.
@@ -144,7 +149,7 @@ class _Constant(jose.JSONDeSerializable, Hashable):  # type: ignore
     def __repr__(self):
         return '{0}({1})'.format(self.__class__.__name__, self.name)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Status) -> bool:
         return isinstance(other, type(self)) and other.name == self.name
 
     def __hash__(self):
@@ -318,7 +323,7 @@ class Registration(ResourceBody):
     email_prefix = 'mailto:'
 
     @classmethod
-    def from_data(cls, phone=None, email=None, external_account_binding=None, **kwargs):
+    def from_data(cls, phone: Optional[Any] = None, email: Optional[str] = None, external_account_binding: Optional[Any] = None, **kwargs: Any) -> NewRegistration:
         """
         Create registration resource from contact details.
 
@@ -347,7 +352,7 @@ class Registration(ResourceBody):
 
         return cls(**kwargs)
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Note if the user provides a value for the `contact` member."""
         if 'contact' in kwargs:
             # Avoid the __setattr__ used by jose.TypedJSONObjectWithFields
@@ -453,7 +458,7 @@ class ChallengeBody(ResourceBody):
     error = jose.Field('error', decoder=Error.from_json,
                        omitempty=True, default=None)
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs = {self._internal_name(k): v for k, v in kwargs.items()}
         super(ChallengeBody, self).__init__(**kwargs)
 
@@ -476,7 +481,7 @@ class ChallengeBody(ResourceBody):
         """The URL of this challenge."""
         return self._url or self._uri
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> str:
         return getattr(self.chall, name)
 
     def __iter__(self):
@@ -485,7 +490,7 @@ class ChallengeBody(ResourceBody):
         for name in super(ChallengeBody, self).__iter__():
             yield name[1:] if name == '_uri' else name
 
-    def _internal_name(self, name):
+    def _internal_name(self, name: str) -> str:
         return '_' + name if name == 'uri' else name
 
 

@@ -1,9 +1,10 @@
 """Standalone Authenticator."""
+# https://github.com/python/typeshed/blob/master/stdlib/2and3/socket.pyi
 import collections
 import logging
 import socket
-# https://github.com/python/typeshed/blob/master/stdlib/2and3/socket.pyi
 from socket import errno as socket_errors  # type: ignore
+from typing import Callable
 from typing import DefaultDict
 from typing import Dict
 from typing import Set
@@ -134,7 +135,7 @@ class Authenticator(common.Plugin):
         self.servers = ServerManager(self.certs, self.http_01_resources)
 
     @classmethod
-    def add_parser_arguments(cls, add):
+    def add_parser_arguments(cls, add: Callable) -> None:
         pass  # No additional argument for the standalone plugin parser
 
     def more_info(self):  # pylint: disable=missing-function-docstring

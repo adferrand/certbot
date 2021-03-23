@@ -1,7 +1,16 @@
 """Certbot command line util function"""
 import argparse
+from argparse import _HelpAction
+from argparse import _StoreAction
+from argparse import _StoreTrueAction
+from argparse import Namespace
 import copy
+from typing import Any
+from typing import List
+from typing import Tuple
+from typing import Union
 
+from configargparse import ArgumentParser
 import zope.interface.interface  # pylint: disable=unused-import
 
 from acme import challenges
@@ -9,26 +18,28 @@ from certbot import errors
 from certbot import interfaces
 from certbot import util
 from certbot._internal import constants
+from certbot._internal.cli.cli_utils import _Default
+from certbot._internal.cli.helpful import HelpfulArgumentParser
 from certbot.compat import os
 
 
 class _Default:
     """A class to use as a default to detect if a value is set by a user"""
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return False
 
-    def __eq__(self, other):
+    def __eq__(self, other: Union[_Default, str]) -> bool:
         return isinstance(other, _Default)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return id(_Default)
 
     def __nonzero__(self):
         return self.__bool__()
 
 
-def read_file(filename, mode="rb"):
+def read_file(filename: str, mode: str = "rb") -> Tuple[str, bytes]:
     """Returns the given file's contents.
 
     :param str filename: path to file
@@ -49,7 +60,7 @@ def read_file(filename, mode="rb"):
         raise argparse.ArgumentTypeError(exc.strerror)
 
 
-def flag_default(name):
+def flag_default(name: str) -> Any:
     """Default value for CLI flag."""
     # XXX: this is an internal housekeeping notion of defaults before
     # argparse has been set up; it is not accurate for all flags.  Call it
@@ -58,7 +69,7 @@ def flag_default(name):
     return copy.deepcopy(constants.CLI_DEFAULTS[name])
 
 
-def config_help(name, hidden=False):
+def config_help(name: str, hidden: bool = False) -> str:
     """Extract the help message for an `.IConfig` attribute."""
     if hidden:
         return argparse.SUPPRESS
@@ -75,11 +86,11 @@ class HelpfulArgumentGroup:
     HelpfulArgumentParser when necessary.
 
     """
-    def __init__(self, helpful_arg_parser, topic):
+    def __init__(self, helpful_arg_parser: HelpfulArgumentParser, topic: str) -> None:
         self._parser = helpful_arg_parser
         self._topic = topic
 
-    def add_argument(self, *args, **kwargs):
+    def add_argument(self, *args: str, **kwargs: Any) -> None:
         """Add a new command line argument to the argument group."""
         self._parser.add(self._topic, *args, **kwargs)
 
@@ -90,7 +101,7 @@ class CustomHelpFormatter(argparse.HelpFormatter):
     In particular we fix https://bugs.python.org/issue28742
     """
 
-    def _get_help_string(self, action):
+    def _get_help_string(self, action: Union[_HelpAction, _StoreAction, _StoreTrueAction]) -> str:
         helpstr = action.help
         if '%(default)' not in action.help and '(default:' not in action.help:
             if action.default != argparse.SUPPRESS:
@@ -103,12 +114,12 @@ class CustomHelpFormatter(argparse.HelpFormatter):
 class _DomainsAction(argparse.Action):
     """Action class for parsing domains."""
 
-    def __call__(self, parser, namespace, domain, option_string=None):
+    def __call__(self, parser: ArgumentParser, namespace: Namespace, domain: str, option_string: str = None) -> None:
         """Just wrap add_domains in argparseese."""
         add_domains(namespace, domain)
 
 
-def add_domains(args_or_config, domains):
+def add_domains(args_or_config: Namespace, domains: str) -> List[str]:
     """Registers new domains to be used during the current client run.
 
     Domains are not added to the list of requested domains if they have
@@ -139,7 +150,7 @@ class CaseInsensitiveList(list):
     This class is passed to the `choices` argument of `argparse.add_arguments`
     through the `helpful` wrapper. It is necessary due to special handling of
     command line arguments by `set_by_cli` in which the `type_func` is not applied."""
-    def __contains__(self, element):
+    def __contains__(self, element: str) -> bool:
         return super(CaseInsensitiveList, self).__contains__(element.lower())
 
 
@@ -152,13 +163,13 @@ def _user_agent_comment_type(value):
 class _EncodeReasonAction(argparse.Action):
     """Action class for parsing revocation reason."""
 
-    def __call__(self, parser, namespace, reason, option_string=None):
+    def __call__(self, parser: ArgumentParser, namespace: Namespace, reason: str, option_string: str = None) -> None:
         """Encodes the reason for certificate revocation."""
         code = constants.REVOCATION_REASONS[reason.lower()]
         setattr(namespace, self.dest, code)
 
 
-def parse_preferred_challenges(pref_challs):
+def parse_preferred_challenges(pref_challs: List[str]) -> List[str]:
     """Translate and validate preferred challenges.
 
     :param pref_challs: list of preferred challenge types
@@ -185,7 +196,7 @@ def parse_preferred_challenges(pref_challs):
 class _PrefChallAction(argparse.Action):
     """Action class for parsing preferred challenges."""
 
-    def __call__(self, parser, namespace, pref_challs, option_string=None):
+    def __call__(self, parser: ArgumentParser, namespace: Namespace, pref_challs: str, option_string: str = None) -> None:
         try:
             challs = parse_preferred_challenges(pref_challs.split(","))
         except errors.Error as error:
@@ -196,7 +207,7 @@ class _PrefChallAction(argparse.Action):
 class _DeployHookAction(argparse.Action):
     """Action class for parsing deploy hooks."""
 
-    def __call__(self, parser, namespace, values, option_string=None):
+    def __call__(self, parser: ArgumentParser, namespace: Namespace, values: str, option_string: str = None) -> None:
         renew_hook_set = namespace.deploy_hook != namespace.renew_hook
         if renew_hook_set and namespace.renew_hook != values:
             raise argparse.ArgumentError(
@@ -207,7 +218,7 @@ class _DeployHookAction(argparse.Action):
 class _RenewHookAction(argparse.Action):
     """Action class for parsing renew hooks."""
 
-    def __call__(self, parser, namespace, values, option_string=None):
+    def __call__(self, parser: ArgumentParser, namespace: Namespace, values: str, option_string: str = None) -> None:
         deploy_hook_set = namespace.deploy_hook is not None
         if deploy_hook_set and namespace.deploy_hook != values:
             raise argparse.ArgumentError(
@@ -215,7 +226,7 @@ class _RenewHookAction(argparse.Action):
         namespace.renew_hook = values
 
 
-def nonnegative_int(value):
+def nonnegative_int(value: str) -> int:
     """Converts value to an int and checks that it is not negative.
 
     This function should used as the type parameter for argparse

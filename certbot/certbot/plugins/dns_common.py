@@ -3,6 +3,7 @@
 import abc
 import logging
 from time import sleep
+from typing import Callable
 
 import configobj
 import zope.interface
@@ -30,7 +31,7 @@ class DNSAuthenticator(common.Plugin):
         self._attempt_cleanup = False
 
     @classmethod
-    def add_parser_arguments(cls, add, default_propagation_seconds=10):  # pylint: disable=arguments-differ
+    def add_parser_arguments(cls, add: Callable, default_propagation_seconds: int = 10) -> None:  # pylint: disable=arguments-differ
         add('propagation-seconds',
             default=default_propagation_seconds,
             type=int,

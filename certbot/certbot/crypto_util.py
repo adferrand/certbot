@@ -4,9 +4,17 @@
     is capable of handling the signatures.
 
 """
+from datetime import datetime
 import hashlib
 import logging
 import re
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 import warnings
 
 # See https://github.com/pyca/cryptography/issues/4275
@@ -14,16 +22,21 @@ from cryptography import x509  # type: ignore
 from cryptography.exceptions import InvalidSignature
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.backends.openssl.ec import _EllipticCurvePublicKey
+from cryptography.hazmat.backends.openssl.rsa import _RSAPublicKey
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.ec import ECDSA
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.hazmat.primitives.serialization import NoEncryption
 from cryptography.hazmat.primitives.serialization import PrivateFormat
 from OpenSSL import crypto
 from OpenSSL import SSL  # type: ignore
+from OpenSSL.crypto import X509
+from OpenSSL.crypto import X509Req
 import pyrfc3339
 import zope.component
 
@@ -32,14 +45,16 @@ from certbot import errors
 from certbot import interfaces
 from certbot import util
 from certbot.compat import os
+from certbot.util import CSR
+from certbot.util import Key
 
 logger = logging.getLogger(__name__)
 
 
 # High level functions
 def init_save_key(
-        key_size, key_dir, key_type="rsa", elliptic_curve="secp256r1", keyname="key-certbot.pem"
-):
+        key_size: int, key_dir: str, key_type: str = "rsa", elliptic_curve: str = "secp256r1", keyname: str = "key-certbot.pem"
+) -> Key:
     """Initializes and saves a privkey.
 
     Inits key and saves it in PEM format on the filesystem.
@@ -82,7 +97,7 @@ def init_save_key(
     return util.Key(key_path, key_pem)
 
 
-def init_save_csr(privkey, names, path):
+def init_save_csr(privkey: Any, names: str, path: str) -> CSR:
     """Initialize a CSR with the given private key.
 
     :param privkey: Key to include in the CSR
@@ -117,7 +132,7 @@ def init_save_csr(privkey, names, path):
 # A. Do more checks to verify that the CSR is trusted/valid
 # B. Audit the parsing code for vulnerabilities
 
-def valid_csr(csr):
+def valid_csr(csr: Union[bytes, str]) -> int:
     """Validate CSR.
 
     Check if `csr` is a valid CSR for the given domains.
@@ -137,7 +152,7 @@ def valid_csr(csr):
         return False
 
 
-def csr_matches_pubkey(csr, privkey):
+def csr_matches_pubkey(csr: bytes, privkey: bytes) -> int:
     """Does private key correspond to the subject public key in the CSR?
 
     :param str csr: CSR in PEM.
@@ -157,7 +172,7 @@ def csr_matches_pubkey(csr, privkey):
         return False
 
 
-def import_csr_file(csrfile, data):
+def import_csr_file(csrfile: str, data: bytes) -> Tuple[int, CSR, List[str]]:
     """Import a CSR file, which can be either PEM or DER.
 
     :param str csrfile: CSR filename
@@ -186,7 +201,7 @@ def import_csr_file(csrfile, data):
     return PEM, util.CSR(file=csrfile, data=data_pem, form="pem"), domains
 
 
-def make_key(bits=1024, key_type="rsa", elliptic_curve=None):
+def make_key(bits: int = 1024, key_type: str = "rsa", elliptic_curve: Optional[str] = None) -> bytes:
     """Generate PEM encoded RSA|EC key.
 
     :param int bits: Number of bits if key_type=rsa. At least 1024 for RSA.
@@ -228,7 +243,7 @@ def make_key(bits=1024, key_type="rsa", elliptic_curve=None):
     return crypto.dump_privatekey(crypto.FILETYPE_PEM, key)
 
 
-def valid_privkey(privkey):
+def valid_privkey(privkey: Union[bytes, str]) -> bool:
     """Is valid RSA private key?
 
     :param str privkey: Private key file contents in PEM
@@ -244,7 +259,7 @@ def valid_privkey(privkey):
         return False
 
 
-def verify_renewable_cert(renewable_cert):
+def verify_renewable_cert(renewable_cert: Any) -> None:
     """For checking that your certs were not corrupted on disk.
 
     Several things are checked:
@@ -262,7 +277,7 @@ def verify_renewable_cert(renewable_cert):
     verify_cert_matches_priv_key(renewable_cert.cert_path, renewable_cert.key_path)
 
 
-def verify_renewable_cert_sig(renewable_cert):
+def verify_renewable_cert_sig(renewable_cert: Any) -> None:
     """Verifies the signature of a RenewableCert object.
 
     :param renewable_cert: cert to verify
@@ -286,7 +301,7 @@ def verify_renewable_cert_sig(renewable_cert):
         raise errors.Error(error_str)
 
 
-def verify_signed_payload(public_key, signature, payload, signature_hash_algorithm):
+def verify_signed_payload(public_key: Union[_EllipticCurvePublicKey, _RSAPublicKey], signature: bytes, payload: bytes, signature_hash_algorithm: SHA256) -> None:
     """Check the signature of a payload.
 
     :param RSAPublicKey/EllipticCurvePublicKey public_key: the public_key to check signature
@@ -317,7 +332,7 @@ def verify_signed_payload(public_key, signature, payload, signature_hash_algorit
             raise errors.Error("Unsupported public key type")
 
 
-def verify_cert_matches_priv_key(cert_path, key_path):
+def verify_cert_matches_priv_key(cert_path: str, key_path: str) -> None:
     """ Verifies that the private key and cert match.
 
     :param str cert_path: path to a cert in PEM format
@@ -339,7 +354,7 @@ def verify_cert_matches_priv_key(cert_path, key_path):
         raise errors.Error(error_str)
 
 
-def verify_fullchain(renewable_cert):
+def verify_fullchain(renewable_cert: Any) -> None:
     """ Verifies that fullchain is indeed cert concatenated with chain.
 
     :param renewable_cert: cert to verify
@@ -366,7 +381,7 @@ def verify_fullchain(renewable_cert):
         raise e
 
 
-def pyopenssl_load_certificate(data):
+def pyopenssl_load_certificate(data: bytes) -> Tuple[X509, int]:
     """Load PEM/DER certificate.
 
     :raises errors.Error:
@@ -384,8 +399,8 @@ def pyopenssl_load_certificate(data):
         str(error) for error in openssl_errors)))
 
 
-def _load_cert_or_req(cert_or_req_str, load_func,
-                      typ=crypto.FILETYPE_PEM):
+def _load_cert_or_req(cert_or_req_str: Union[bytes, str], load_func: Callable,
+                      typ: int = crypto.FILETYPE_PEM) -> X509:
     try:
         return load_func(typ, cert_or_req_str)
     except crypto.Error:
@@ -393,14 +408,14 @@ def _load_cert_or_req(cert_or_req_str, load_func,
         raise
 
 
-def _get_sans_from_cert_or_req(cert_or_req_str, load_func,
-                               typ=crypto.FILETYPE_PEM):
+def _get_sans_from_cert_or_req(cert_or_req_str: bytes, load_func: Callable,
+                               typ: int = crypto.FILETYPE_PEM) -> List[str]:
     # pylint: disable=protected-access
     return acme_crypto_util._pyopenssl_cert_or_req_san(_load_cert_or_req(
         cert_or_req_str, load_func, typ))
 
 
-def get_sans_from_cert(cert, typ=crypto.FILETYPE_PEM):
+def get_sans_from_cert(cert: bytes, typ: int = crypto.FILETYPE_PEM) -> List[str]:
     """Get a list of Subject Alternative Names from a certificate.
 
     :param str cert: Certificate (encoded).
@@ -414,17 +429,17 @@ def get_sans_from_cert(cert, typ=crypto.FILETYPE_PEM):
         cert, crypto.load_certificate, typ)
 
 
-def _get_names_from_cert_or_req(cert_or_req, load_func, typ):
+def _get_names_from_cert_or_req(cert_or_req: Union[bytes, str], load_func: Callable, typ: int) -> List[str]:
     loaded_cert_or_req = _load_cert_or_req(cert_or_req, load_func, typ)
     return _get_names_from_loaded_cert_or_req(loaded_cert_or_req)
 
 
-def _get_names_from_loaded_cert_or_req(loaded_cert_or_req):
+def _get_names_from_loaded_cert_or_req(loaded_cert_or_req: Union[X509, X509Req]) -> List[str]:
     # pylint: disable=protected-access
     return acme_crypto_util._pyopenssl_cert_or_req_all_names(loaded_cert_or_req)
 
 
-def get_names_from_cert(csr, typ=crypto.FILETYPE_PEM):
+def get_names_from_cert(csr: Union[bytes, str], typ: int = crypto.FILETYPE_PEM) -> List[str]:
     """Get a list of domains from a cert, including the CN if it is set.
 
     :param str cert: Certificate (encoded).
@@ -450,7 +465,7 @@ def dump_pyopenssl_chain(chain, filetype=crypto.FILETYPE_PEM):
     return acme_crypto_util.dump_pyopenssl_chain(chain, filetype)
 
 
-def notBefore(cert_path):
+def notBefore(cert_path: str) -> datetime:
     """When does the cert at cert_path start being valid?
 
     :param str cert_path: path to a cert in PEM format
@@ -462,7 +477,7 @@ def notBefore(cert_path):
     return _notAfterBefore(cert_path, crypto.X509.get_notBefore)
 
 
-def notAfter(cert_path):
+def notAfter(cert_path: str) -> datetime:
     """When does the cert at cert_path stop being valid?
 
     :param str cert_path: path to a cert in PEM format
@@ -474,7 +489,7 @@ def notAfter(cert_path):
     return _notAfterBefore(cert_path, crypto.X509.get_notAfter)
 
 
-def _notAfterBefore(cert_path, method):
+def _notAfterBefore(cert_path: str, method: Callable) -> datetime:
     """Internal helper function for finding notbefore/notafter.
 
     :param str cert_path: path to a cert in PEM format
@@ -499,7 +514,7 @@ def _notAfterBefore(cert_path, method):
     return pyrfc3339.parse(timestamp_str)
 
 
-def sha256sum(filename):
+def sha256sum(filename: str) -> str:
     """Compute a sha256sum of a file.
 
     NB: In given file, platform specific newlines characters will be converted
@@ -526,7 +541,7 @@ CERT_PEM_REGEX = re.compile(
 )
 
 
-def cert_and_chain_from_fullchain(fullchain_pem):
+def cert_and_chain_from_fullchain(fullchain_pem: str) -> Tuple[str, str]:
     """Split fullchain_pem into cert_pem and chain_pem
 
     :param str fullchain_pem: concatenated cert + chain
@@ -568,7 +583,7 @@ def get_serial_from_cert(cert_path):
     return x509.get_serial_number()
 
 
-def find_chain_with_issuer(fullchains, issuer_cn, warn_on_no_match=False):
+def find_chain_with_issuer(fullchains: List[str], issuer_cn: str, warn_on_no_match: Dict[str, bool] = False) -> str:
     """Chooses the first certificate chain from fullchains whose topmost
     intermediate has an Issuer Common Name matching issuer_cn (in other words
     the first chain which chains to a root whose name matches issuer_cn).

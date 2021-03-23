@@ -1,9 +1,10 @@
 """This module contains a function to add the groups of arguments for the help
 display"""
+from certbot._internal.cli.helpful import HelpfulArgumentParser
 from certbot._internal.cli.verb_help import VERB_HELP
 
 
-def _add_all_groups(helpful):
+def _add_all_groups(helpful: HelpfulArgumentParser) -> None:
     helpful.add_group("automation", description="Flags for automating execution & other tweaks")
     helpful.add_group("security", description="Security parameters & server settings")
     helpful.add_group("testing",

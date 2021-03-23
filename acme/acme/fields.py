@@ -1,4 +1,5 @@
 """ACME JSON fields."""
+from datetime import datetime
 import logging
 
 import josepy as jose
@@ -37,11 +38,11 @@ class RFC3339Field(jose.Field):
     """
 
     @classmethod
-    def default_encoder(cls, value):
+    def default_encoder(cls, value: datetime) -> str:
         return pyrfc3339.generate(value)
 
     @classmethod
-    def default_decoder(cls, value):
+    def default_decoder(cls, value: str) -> datetime:
         try:
             return pyrfc3339.parse(value)
         except ValueError as error:

@@ -6,12 +6,15 @@ import os
 import re
 import socket
 from typing import Callable
+from typing import List
 from typing import Tuple
 from typing import Union
 
 import josepy as jose
 from OpenSSL import crypto
 from OpenSSL import SSL  # type: ignore # https://github.com/python/typeshed/issues/2052
+from OpenSSL.crypto import X509
+from OpenSSL.crypto import X509Req
 
 from acme import errors
 
@@ -219,7 +222,7 @@ def make_csr(private_key_pem, domains, must_staple=False):
         crypto.FILETYPE_PEM, csr)
 
 
-def _pyopenssl_cert_or_req_all_names(loaded_cert_or_req):
+def _pyopenssl_cert_or_req_all_names(loaded_cert_or_req: Union[X509, X509Req]) -> List[str]:
     common_name = loaded_cert_or_req.get_subject().CN
     sans = _pyopenssl_cert_or_req_san(loaded_cert_or_req)
 
@@ -228,7 +231,7 @@ def _pyopenssl_cert_or_req_all_names(loaded_cert_or_req):
     return [common_name] + [d for d in sans if d != common_name]
 
 
-def _pyopenssl_cert_or_req_san(cert_or_req):
+def _pyopenssl_cert_or_req_san(cert_or_req: Union[X509, X509Req]) -> List[str]:
     """Get Subject Alternative Names from certificate or CSR using pyOpenSSL.
 
     .. todo:: Implement directly in PyOpenSSL!

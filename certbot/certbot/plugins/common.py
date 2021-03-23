@@ -3,7 +3,10 @@ import logging
 import re
 import shutil
 import tempfile
+from typing import Any
+from typing import Callable
 from typing import List
+from typing import Optional
 
 from josepy import util as jose_util
 import pkg_resources
@@ -15,6 +18,7 @@ from certbot import errors
 from certbot import interfaces
 from certbot import reverter
 from certbot._internal import constants
+from certbot._internal.cli.cli_utils import HelpfulArgumentGroup
 from certbot.compat import filesystem
 from certbot.compat import os
 from certbot.plugins.storage import PluginStorage
@@ -22,7 +26,7 @@ from certbot.plugins.storage import PluginStorage
 logger = logging.getLogger(__name__)
 
 
-def option_namespace(name):
+def option_namespace(name: str) -> str:
     """ArgumentParser options namespace (prefix of all options)."""
     return name + "-"
 
@@ -50,7 +54,7 @@ class Plugin:
         self.name = name
 
     @jose_util.abstractclassmethod
-    def add_parser_arguments(cls, add):
+    def add_parser_arguments(cls, add: Callable) -> None:
         """Add plugin arguments to the CLI argument parser.
 
         :param callable add: Function that proxies calls to
@@ -60,14 +64,14 @@ class Plugin:
         """
 
     @classmethod
-    def inject_parser_options(cls, parser, name):
+    def inject_parser_options(cls, parser: HelpfulArgumentGroup, name: str) -> Optional[Any]:
         """Inject parser options.
 
         See `~.IPlugin.inject_parser_options` for docs.
 
         """
         # dummy function, doesn't check if dest.startswith(self.dest_namespace)
-        def add(arg_name_no_prefix, *args, **kwargs):
+        def add(arg_name_no_prefix: str, *args: Any, **kwargs: Any) -> Optional[Any]:
             return parser.add_argument(
                 "--{0}{1}".format(option_namespace(name), arg_name_no_prefix),
                 *args, **kwargs)

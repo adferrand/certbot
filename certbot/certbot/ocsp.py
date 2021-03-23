@@ -8,11 +8,11 @@ from subprocess import Popen
 from typing import Optional
 from typing import Tuple
 
+# See https://github.com/pyca/cryptography/issues/4275
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.backends import default_backend
-# See https://github.com/pyca/cryptography/issues/4275
 from cryptography.hazmat.primitives import hashes  # type: ignore
 from cryptography.hazmat.primitives import serialization
 import pytz
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 class RevocationChecker:
     """This class figures out OCSP checking on this system, and performs it."""
 
-    def __init__(self, enforce_openssl_binary_usage=False):
+    def __init__(self, enforce_openssl_binary_usage: bool = False) -> None:
         self.broken = False
         self.use_openssl_binary = enforce_openssl_binary_usage or not ocsp
 

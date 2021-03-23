@@ -3,6 +3,8 @@ import argparse
 import collections
 import json
 import logging
+from typing import Any
+from typing import Callable
 from typing import DefaultDict
 from typing import Dict
 from typing import List
@@ -44,7 +46,7 @@ to serve all files under specified web root ({0})."""
         return self.MORE_INFO.format(self.conf("path"))
 
     @classmethod
-    def add_parser_arguments(cls, add):
+    def add_parser_arguments(cls, add: Callable) -> None:
         add("path", "-w", default=[], action=_WebrootPathAction,
             help="public_html / webroot path. This can be specified multiple "
                  "times to handle different domains; each domain will have "
@@ -249,7 +251,7 @@ class _WebrootMapAction(argparse.Action):
 class _WebrootPathAction(argparse.Action):
     """Action class for parsing webroot_path."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(_WebrootPathAction, self).__init__(*args, **kwargs)
         self._domain_before_webroot = False
 

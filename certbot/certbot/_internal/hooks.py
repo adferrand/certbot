@@ -1,7 +1,10 @@
 """Facilities for implementing hooks that call shell commands."""
 
+from argparse import Namespace
 import logging
+from typing import Any
 from typing import List
+from typing import Optional
 from typing import Set
 
 from certbot import errors
@@ -14,7 +17,7 @@ from certbot.plugins import util as plug_util
 logger = logging.getLogger(__name__)
 
 
-def validate_hooks(config):
+def validate_hooks(config: Namespace) -> None:
     """Check hook commands are executable."""
     validate_hook(config.pre_hook, "pre")
     validate_hook(config.post_hook, "post")
@@ -38,7 +41,7 @@ def _prog(shell_cmd):
     return os.path.basename(shell_cmd)
 
 
-def validate_hook(shell_cmd, hook_name):
+def validate_hook(shell_cmd: Optional[Any], hook_name: str) -> None:
     """Check that a command provided as a hook is plausibly executable.
 
     :raises .errors.HookCommandNotFound: if the command is not found

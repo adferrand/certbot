@@ -1,11 +1,14 @@
 """Decide which plugins to use for authentication & installation"""
 
+from argparse import Namespace
 import logging
+from typing import Tuple
 
 import zope.component
 
 from certbot import errors
 from certbot import interfaces
+from certbot._internal.cli.cli_utils import _Default
 from certbot.compat import os
 from certbot.display import util as display_util
 
@@ -236,7 +239,7 @@ def choose_configurator_plugins(config, plugins, verb):
     return installer, authenticator
 
 
-def set_configurator(previously, now):
+def set_configurator(previously: _Default, now: _Default) -> _Default:
     """
     Setting configurators multiple ways is okay, as long as they all agree
     :param str previously: previously identified request for the installer/authenticator
@@ -252,7 +255,7 @@ def set_configurator(previously, now):
     return now
 
 
-def cli_plugin_requests(config):
+def cli_plugin_requests(config: Namespace) -> Tuple[_Default, _Default]:
     """
     Figure out which plugins the user requested with CLI and config options
 

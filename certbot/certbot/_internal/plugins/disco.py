@@ -6,12 +6,15 @@ import sys
 from typing import Dict
 
 import pkg_resources
+from pkg_resources import EntryPoint
 import zope.interface
 import zope.interface.verify
 
 from certbot import errors
 from certbot import interfaces
 from certbot._internal import constants
+from certbot._internal.plugins.disco import PluginEntryPoint
+from certbot._internal.plugins.disco import PluginsRegistry
 from certbot.compat import os
 
 logger = logging.getLogger(__name__)
@@ -44,7 +47,7 @@ class PluginEntryPoint:
     # this object is mutable, don't allow it to be hashed!
     __hash__ = None  # type: ignore
 
-    def __init__(self, entry_point, with_prefix=False):
+    def __init__(self, entry_point: EntryPoint, with_prefix: bool = False) -> None:
         self.name = self.entry_point_to_plugin_name(entry_point, with_prefix)
         self.plugin_cls = entry_point.load()
         self.entry_point = entry_point
@@ -63,14 +66,14 @@ class PluginEntryPoint:
         return False
 
     @classmethod
-    def entry_point_to_plugin_name(cls, entry_point, with_prefix):
+    def entry_point_to_plugin_name(cls, entry_point: EntryPoint, with_prefix: bool) -> str:
         """Unique plugin name for an ``entry_point``"""
         if with_prefix:
             return entry_point.dist.key + ":" + entry_point.name
         return entry_point.name
 
     @property
-    def description(self):
+    def description(self) -> str:
         """Description of the plugin."""
         return self.plugin_cls.description
 
@@ -80,7 +83,7 @@ class PluginEntryPoint:
         return "{0} ({1})".format(self.description, self.name)
 
     @property
-    def long_description(self):
+    def long_description(self) -> str:
         """Long description of the plugin."""
         if self._long_description:
             return self._long_description
@@ -203,7 +206,7 @@ class PluginEntryPoint:
 class PluginsRegistry(Mapping):
     """Plugins registry."""
 
-    def __init__(self, plugins):
+    def __init__(self, plugins: Dict[str, PluginEntryPoint]) -> None:
         # plugins are sorted so the same order is used between runs.
         # This prevents deadlock caused by plugins acquiring a lock
         # and ensures at least one concurrent Certbot instance will run
@@ -211,7 +214,7 @@ class PluginsRegistry(Mapping):
         self._plugins = dict(sorted(plugins.items()))
 
     @classmethod
-    def find_all(cls):
+    def find_all(cls) -> PluginsRegistry:
         """Find plugins using setuptools entry points."""
         plugins: Dict[str, PluginEntryPoint] = {}
         plugin_paths_string = os.getenv('CERTBOT_PLUGIN_PATH')
@@ -243,7 +246,7 @@ class PluginsRegistry(Mapping):
         return cls(plugins)
 
     @classmethod
-    def _load_entry_point(cls, entry_point, plugins, with_prefix):
+    def _load_entry_point(cls, entry_point: EntryPoint, plugins: Dict[str, PluginEntryPoint], with_prefix: bool) -> PluginEntryPoint:
         plugin_ep = PluginEntryPoint(entry_point, with_prefix)
         if plugin_ep.name in plugins:
             other_ep = plugins[plugin_ep.name]
@@ -257,13 +260,13 @@ class PluginsRegistry(Mapping):
 
         return plugin_ep
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> PluginEntryPoint:
         return self._plugins[name]
 
-    def __iter__(self):
+    def __iter__(self) -> dict_keyiterator:
         return iter(self._plugins)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._plugins)
 
     def init(self, config):

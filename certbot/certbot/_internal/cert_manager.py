@@ -3,7 +3,13 @@ import datetime
 import logging
 import re
 import traceback
+from typing import Any
+from typing import Callable
 from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
+from unittest.mock import MagicMock
 
 import pytz
 import zope.component
@@ -14,6 +20,8 @@ from certbot import interfaces
 from certbot import ocsp
 from certbot import util
 from certbot._internal import storage
+from certbot._internal.configuration import NamespaceConfig
+from certbot._internal.storage import RenewableCert
 from certbot.compat import os
 from certbot.display import util as display_util
 
@@ -23,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Commands
 ###################
 
-def update_live_symlinks(config):
+def update_live_symlinks(config: NamespaceConfig) -> None:
     """Update the certificate file family symlinks to use archive_dir.
 
     Use the information in the config file to make symlinks point to
@@ -38,7 +46,7 @@ def update_live_symlinks(config):
     for renewal_file in storage.renewal_conf_files(config):
         storage.RenewableCert(renewal_file, config, update_symlinks=True)
 
-def rename_lineage(config):
+def rename_lineage(config: NamespaceConfig) -> None:
     """Rename the specified lineage to the new name.
 
     :param config: Configuration.
@@ -66,7 +74,7 @@ def rename_lineage(config):
         .format(certname, new_certname), pause=False)
 
 
-def certificates(config):
+def certificates(config: NamespaceConfig) -> None:
     """Display information about certs configured with Certbot
 
     :param config: Configuration.
@@ -89,7 +97,7 @@ def certificates(config):
     _describe_certs(config, parsed_certs, parse_failures)
 
 
-def delete(config):
+def delete(config: NamespaceConfig) -> None:
     """Delete Certbot files associated with a certificate lineage."""
     certnames = get_certnames(config, "delete", allow_multiple=True)
     disp = zope.component.getUtility(interfaces.IDisplay)
@@ -109,7 +117,7 @@ def delete(config):
 # Public Helpers
 ###################
 
-def lineage_for_certname(cli_config, certname):
+def lineage_for_certname(cli_config: NamespaceConfig, certname: str) -> Optional[RenewableCert]:
     """Find a lineage object with name certname."""
     configs_dir = cli_config.renewal_configs_dir
     # Verify the directory is there
@@ -126,13 +134,13 @@ def lineage_for_certname(cli_config, certname):
         return None
 
 
-def domains_for_certname(config, certname):
+def domains_for_certname(config: NamespaceConfig, certname: str) -> Optional[List[str]]:
     """Find the domains in the cert with name certname."""
     lineage = lineage_for_certname(config, certname)
     return lineage.names() if lineage else None
 
 
-def find_duplicative_certs(config, domains):
+def find_duplicative_certs(config: NamespaceConfig, domains: List[str]) -> Tuple[Optional[RenewableCert], Optional[RenewableCert]]:
     """Find existing certs that match the given domain names.
 
     This function searches for certificates whose domains are equal to
@@ -155,7 +163,7 @@ def find_duplicative_certs(config, domains):
     :rtype: `tuple` of `storage.RenewableCert` or `None`
 
     """
-    def update_certs_for_domain_matches(candidate_lineage, rv):
+    def update_certs_for_domain_matches(candidate_lineage: RenewableCert, rv: Tuple[None, None]) -> Tuple[Optional[RenewableCert], Optional[RenewableCert]]:
         """Return cert as identical_names_cert if it matches,
            or subset_names_cert if it matches as subset
         """
@@ -177,7 +185,7 @@ def find_duplicative_certs(config, domains):
     return _search_lineages(config, update_certs_for_domain_matches, (None, None))
 
 
-def _archive_files(candidate_lineage, filetype):
+def _archive_files(candidate_lineage: RenewableCert, filetype: str) -> List[str]:
     """ In order to match things like:
         /etc/letsencrypt/archive/example.com/chain1.pem.
 
@@ -199,7 +207,7 @@ def _archive_files(candidate_lineage, filetype):
     return None
 
 
-def _acceptable_matches():
+def _acceptable_matches() -> List[Callable]:
     """ Generates the list that's passed to match_and_check_overlaps. Is its own function to
     make unit testing easier.
 
@@ -210,7 +218,7 @@ def _acceptable_matches():
             lambda x: _archive_files(x, "cert"), lambda x: _archive_files(x, "fullchain")]
 
 
-def cert_path_to_lineage(cli_config):
+def cert_path_to_lineage(cli_config: NamespaceConfig) -> str:
     """ If config.cert_path is defined, try to find an appropriate value for config.certname.
 
     :param `configuration.NamespaceConfig` cli_config: parsed command line arguments
@@ -227,7 +235,7 @@ def cert_path_to_lineage(cli_config):
     return match[0]
 
 
-def match_and_check_overlaps(cli_config, acceptable_matches, match_func, rv_func):
+def match_and_check_overlaps(cli_config: NamespaceConfig, acceptable_matches: Optional[List[Callable]], match_func: Optional[Callable], rv_func: Optional[Callable]) -> List[str]:
     """ Searches through all lineages for a match, and checks for duplicates.
     If a duplicate is found, an error is raised, as performing operations on lineages
     that have their properties incorrectly duplicated elsewhere is probably a bad idea.
@@ -238,7 +246,7 @@ def match_and_check_overlaps(cli_config, acceptable_matches, match_func, rv_func
     :param function rv_func: specifies what to return
 
     """
-    def find_matches(candidate_lineage, return_value, acceptable_matches):
+    def find_matches(candidate_lineage: RenewableCert, return_value: List, acceptable_matches: List[Callable]) -> List[str]:
         """Returns a list of matches using _search_lineages."""
         acceptable_matches = [func(candidate_lineage) for func in acceptable_matches]
         acceptable_matches_rv: List[str] = []
@@ -260,7 +268,7 @@ def match_and_check_overlaps(cli_config, acceptable_matches, match_func, rv_func
     return matched
 
 
-def human_readable_cert_info(config, cert, skip_filter_checks=False):
+def human_readable_cert_info(config: Any, cert: Any, skip_filter_checks: bool = False) -> str:
     """ Returns a human readable description of info about a RenewableCert object"""
     certinfo = []
     checker = ocsp.RevocationChecker()
@@ -309,7 +317,7 @@ def human_readable_cert_info(config, cert, skip_filter_checks=False):
     return "".join(certinfo)
 
 
-def get_certnames(config, verb, allow_multiple=False, custom_prompt=None):
+def get_certnames(config: NamespaceConfig, verb: str, allow_multiple: bool = False, custom_prompt: Optional[str] = None) -> List[str]:
     """Get certname from flag, interactively, or error out.
     """
     certname = config.certname
@@ -349,12 +357,12 @@ def get_certnames(config, verb, allow_multiple=False, custom_prompt=None):
 ###################
 
 
-def _report_lines(msgs):
+def _report_lines(msgs: List[str]) -> str:
     """Format a results report for a category of single-line renewal outcomes"""
     return "  " + "\n  ".join(str(msg) for msg in msgs)
 
 
-def _report_human_readable(config, parsed_certs):
+def _report_human_readable(config: Any, parsed_certs: List[MagicMock]) -> str:
     """Format a results report for a parsed cert"""
     certinfo = []
     for cert in parsed_certs:
@@ -364,7 +372,7 @@ def _report_human_readable(config, parsed_certs):
     return "\n".join(certinfo)
 
 
-def _describe_certs(config, parsed_certs, parse_failures):
+def _describe_certs(config: NamespaceConfig, parsed_certs: List[MagicMock], parse_failures: List[str]) -> None:
     """Print information about the certs we know about"""
     out: List[str] = []
 
@@ -386,7 +394,7 @@ def _describe_certs(config, parsed_certs, parse_failures):
     disp.notification("\n".join(out), pause=False, wrap=False)
 
 
-def _search_lineages(cli_config, func, initial_rv, *args):
+def _search_lineages(cli_config: NamespaceConfig, func: Callable, initial_rv: Union[List, Tuple[None, None], str], *args: List[Callable]) -> Union[List[str], Tuple[Optional[RenewableCert], Optional[RenewableCert]], str]:
     """Iterate func over unbroken lineages, allowing custom return conditions.
 
     Allows flexible customization of return values, including multiple

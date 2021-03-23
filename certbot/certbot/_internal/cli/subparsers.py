@@ -6,9 +6,10 @@ from certbot._internal.cli.cli_utils import _user_agent_comment_type
 from certbot._internal.cli.cli_utils import CaseInsensitiveList
 from certbot._internal.cli.cli_utils import flag_default
 from certbot._internal.cli.cli_utils import read_file
+from certbot._internal.cli.helpful import HelpfulArgumentParser
 
 
-def _create_subparsers(helpful):
+def _create_subparsers(helpful: HelpfulArgumentParser) -> None:
     from certbot._internal.client import sample_user_agent  # avoid import loops
     helpful.add(
         None, "--user-agent", default=flag_default("user_agent"),

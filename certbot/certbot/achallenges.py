@@ -18,6 +18,7 @@ Note, that all annotated challenges act as a proxy objects::
 
 """
 import logging
+from typing import Any
 
 import josepy as jose
 
@@ -39,7 +40,7 @@ class AnnotatedChallenge(jose.ImmutableMap):
     __slots__ = ('challb',)
     acme_type = NotImplemented
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.challb, name)
 
 

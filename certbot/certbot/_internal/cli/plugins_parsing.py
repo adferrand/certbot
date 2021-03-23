@@ -1,8 +1,10 @@
 """This is a module that handles parsing of plugins for the argument parser"""
 from certbot._internal.cli.cli_utils import flag_default
+from certbot._internal.cli.helpful import HelpfulArgumentParser
+from certbot._internal.plugins.disco import PluginsRegistry
 
 
-def _plugins_parsing(helpful, plugins):
+def _plugins_parsing(helpful: HelpfulArgumentParser, plugins: PluginsRegistry) -> None:
     # It's nuts, but there are two "plugins" topics.  Somehow this works
     helpful.add_group(
         "plugins", description="Plugin Selection: Certbot client supports an "

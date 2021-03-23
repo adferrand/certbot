@@ -1,6 +1,7 @@
 """New interface style Certbot enhancements"""
 import abc
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import List
 
@@ -76,7 +77,7 @@ def enable(lineage, domains, installer, config):
     for enh in enabled_enhancements(config):
         getattr(installer, enh["enable_function"])(lineage, domains)
 
-def populate_cli(add):
+def populate_cli(add: Callable) -> None:
     """
     Populates the command line flags for certbot._internal.cli.HelpfulParser
 

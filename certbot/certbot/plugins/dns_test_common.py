@@ -2,16 +2,18 @@
 
 import configobj
 import josepy as jose
-try:
-    import mock
-except ImportError: # pragma: no cover
-    from unittest import mock # type: ignore
 
 from acme import challenges
 from certbot import achallenges
 from certbot.compat import filesystem
 from certbot.tests import acme_util
 from certbot.tests import util as test_util
+
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock # type: ignore
+
 
 DOMAIN = 'example.com'
 KEY = jose.JWKRSA.load(test_util.load_vector("rsa512_key.pem"))

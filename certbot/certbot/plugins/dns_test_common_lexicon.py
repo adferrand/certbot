@@ -1,16 +1,18 @@
 """Base test class for DNS authenticators built on Lexicon."""
 
 import josepy as jose
-try:
-    import mock
-except ImportError: # pragma: no cover
-    from unittest import mock # type: ignore
 from requests.exceptions import HTTPError
 from requests.exceptions import RequestException
 
 from certbot import errors
 from certbot.plugins import dns_test_common
 from certbot.tests import util as test_util
+
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock # type: ignore
+
 
 DOMAIN = 'example.com'
 KEY = jose.JWKRSA.load(test_util.load_vector("rsa512_key.pem"))

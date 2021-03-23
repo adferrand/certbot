@@ -1,4 +1,5 @@
 """Manual authenticator plugin"""
+from typing import Callable
 from typing import Dict
 
 import zope.component
@@ -79,7 +80,7 @@ permitted by DNS standards.)
         self.subsequent_any_challenge = False
 
     @classmethod
-    def add_parser_arguments(cls, add):
+    def add_parser_arguments(cls, add: Callable) -> None:
         add('auth-hook',
             help='Path or command to execute for the authentication script')
         add('cleanup-hook',

@@ -12,6 +12,7 @@ import re
 import socket
 import subprocess
 import sys
+from typing import Callable
 from typing import Dict
 from typing import Text
 from typing import Tuple
@@ -19,6 +20,8 @@ from typing import Union
 
 import configargparse
 
+from _io import BufferedWriter
+from _io import TextIOWrapper
 from certbot import errors
 from certbot._internal import constants
 from certbot._internal import lock
@@ -151,7 +154,7 @@ def lock_dir_until_exit(dir_path):
         _LOCKS[dir_path] = lock.lock_dir(dir_path)
 
 
-def _release_locks():
+def _release_locks() -> None:
     for dir_lock in _LOCKS.values():
         try:
             dir_lock.release()
@@ -180,7 +183,7 @@ def set_up_core_dir(directory, mode, strict):
         raise errors.Error(PERM_ERR_FMT.format(error))
 
 
-def make_or_verify_dir(directory, mode=0o755, strict=False):
+def make_or_verify_dir(directory: str, mode: int = 0o755, strict: bool = False) -> None:
     """Make sure directory exists with proper permissions.
 
     :param str directory: Path to a directory.
@@ -207,7 +210,7 @@ def make_or_verify_dir(directory, mode=0o755, strict=False):
             raise
 
 
-def safe_open(path, mode="w", chmod=None):
+def safe_open(path: str, mode: str = "w", chmod: int = None) -> Union[BufferedWriter, TextIOWrapper]:
     """Safely open a file.
 
     :param str path: Path to a file.
@@ -224,7 +227,7 @@ def safe_open(path, mode="w", chmod=None):
     return os.fdopen(fd, mode, *fdopen_args)
 
 
-def _unique_file(path, filename_pat, count, chmod, mode):
+def _unique_file(path: str, filename_pat: Callable, count: int, chmod: int, mode: str) -> Tuple[BufferedWriter, str]:
     while True:
         current_path = os.path.join(path, filename_pat(count))
         try:
@@ -237,7 +240,7 @@ def _unique_file(path, filename_pat, count, chmod, mode):
         count += 1
 
 
-def unique_file(path, chmod=0o777, mode="w"):
+def unique_file(path: str, chmod: int = 0o777, mode: str = "w") -> Tuple[BufferedWriter, str]:
     """Safely finds a unique file.
 
     :param str path: path/filename.ext
@@ -316,7 +319,7 @@ def get_os_info():
 
     return get_python_os_info(pretty=False)
 
-def get_os_info_ua():
+def get_os_info_ua() -> str:
     """
     Get OS name and version string for User Agent
 
@@ -444,7 +447,7 @@ class DeprecatedArgumentAction(argparse.Action):
         logger.warning("Use of %s is deprecated.", option_string)
 
 
-def add_deprecated_argument(add_argument, argument_name, nargs):
+def add_deprecated_argument(add_argument: Callable, argument_name: str, nargs: int) -> None:
     """Adds a deprecated argument with the name argument_name.
 
     Deprecated arguments are not shown in the help. If they are used on
@@ -502,7 +505,7 @@ def enforce_le_validity(domain):
                     label, domain))
     return domain
 
-def enforce_domain_sanity(domain):
+def enforce_domain_sanity(domain: str) -> str:
     """Method which validates domain value and errors out if
     the requirements are not met.
 
@@ -567,7 +570,7 @@ def enforce_domain_sanity(domain):
     return domain
 
 
-def is_wildcard_domain(domain):
+def is_wildcard_domain(domain: str) -> bool:
     """"Is domain a wildcard domain?
 
     :param domain: domain to check

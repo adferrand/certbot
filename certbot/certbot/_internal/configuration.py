@@ -1,5 +1,6 @@
 """Certbot user-supplied configuration."""
 import copy
+from typing import Any
 from urllib import parse
 
 import zope.interface
@@ -8,6 +9,7 @@ from certbot import errors
 from certbot import interfaces
 from certbot import util
 from certbot._internal import constants
+from certbot._internal.configuration import NamespaceConfig
 from certbot.compat import misc
 from certbot.compat import os
 
@@ -42,7 +44,7 @@ class NamespaceConfig:
 
     """
 
-    def __init__(self, namespace):
+    def __init__(self, namespace: Any) -> None:
         object.__setattr__(self, 'namespace', namespace)
 
         self.namespace.config_dir = os.path.abspath(self.namespace.config_dir)
@@ -52,46 +54,46 @@ class NamespaceConfig:
         # Check command line parameters sanity, and error out in case of problem.
         check_config_sanity(self)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.namespace, name)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: str) -> None:
         setattr(self.namespace, name, value)
 
     @property
-    def server_path(self):
+    def server_path(self) -> str:
         """File path based on ``server``."""
         parsed = parse.urlparse(self.namespace.server)
         return (parsed.netloc + parsed.path).replace('/', os.path.sep)
 
     @property
-    def accounts_dir(self):  # pylint: disable=missing-function-docstring
+    def accounts_dir(self) -> str:  # pylint: disable=missing-function-docstring
         return self.accounts_dir_for_server_path(self.server_path)
 
-    def accounts_dir_for_server_path(self, server_path):
+    def accounts_dir_for_server_path(self, server_path: str) -> str:
         """Path to accounts directory based on server_path"""
         server_path = misc.underscores_for_unsupported_characters_in_path(server_path)
         return os.path.join(
             self.namespace.config_dir, constants.ACCOUNTS_DIR, server_path)
 
     @property
-    def backup_dir(self):  # pylint: disable=missing-function-docstring
+    def backup_dir(self) -> str:  # pylint: disable=missing-function-docstring
         return os.path.join(self.namespace.work_dir, constants.BACKUP_DIR)
 
     @property
-    def csr_dir(self):  # pylint: disable=missing-function-docstring
+    def csr_dir(self) -> str:  # pylint: disable=missing-function-docstring
         return os.path.join(self.namespace.config_dir, constants.CSR_DIR)
 
     @property
-    def in_progress_dir(self):  # pylint: disable=missing-function-docstring
+    def in_progress_dir(self) -> str:  # pylint: disable=missing-function-docstring
         return os.path.join(self.namespace.work_dir, constants.IN_PROGRESS_DIR)
 
     @property
-    def key_dir(self):  # pylint: disable=missing-function-docstring
+    def key_dir(self) -> str:  # pylint: disable=missing-function-docstring
         return os.path.join(self.namespace.config_dir, constants.KEY_DIR)
 
     @property
-    def temp_checkpoint_dir(self):  # pylint: disable=missing-function-docstring
+    def temp_checkpoint_dir(self) -> str:  # pylint: disable=missing-function-docstring
         return os.path.join(
             self.namespace.work_dir, constants.TEMP_CHECKPOINT_DIR)
 
@@ -102,44 +104,44 @@ class NamespaceConfig:
         return type(self)(new_ns)
 
     @property
-    def default_archive_dir(self):  # pylint: disable=missing-function-docstring
+    def default_archive_dir(self) -> str:  # pylint: disable=missing-function-docstring
         return os.path.join(self.namespace.config_dir, constants.ARCHIVE_DIR)
 
     @property
-    def live_dir(self):  # pylint: disable=missing-function-docstring
+    def live_dir(self) -> str:  # pylint: disable=missing-function-docstring
         return os.path.join(self.namespace.config_dir, constants.LIVE_DIR)
 
     @property
-    def renewal_configs_dir(self):  # pylint: disable=missing-function-docstring
+    def renewal_configs_dir(self) -> str:  # pylint: disable=missing-function-docstring
         return os.path.join(
             self.namespace.config_dir, constants.RENEWAL_CONFIGS_DIR)
 
     @property
-    def renewal_hooks_dir(self):
+    def renewal_hooks_dir(self) -> str:
         """Path to directory with hooks to run with the renew subcommand."""
         return os.path.join(self.namespace.config_dir,
                             constants.RENEWAL_HOOKS_DIR)
 
     @property
-    def renewal_pre_hooks_dir(self):
+    def renewal_pre_hooks_dir(self) -> str:
         """Path to the pre-hook directory for the renew subcommand."""
         return os.path.join(self.renewal_hooks_dir,
                             constants.RENEWAL_PRE_HOOKS_DIR)
 
     @property
-    def renewal_deploy_hooks_dir(self):
+    def renewal_deploy_hooks_dir(self) -> str:
         """Path to the deploy-hook directory for the renew subcommand."""
         return os.path.join(self.renewal_hooks_dir,
                             constants.RENEWAL_DEPLOY_HOOKS_DIR)
 
     @property
-    def renewal_post_hooks_dir(self):
+    def renewal_post_hooks_dir(self) -> str:
         """Path to the post-hook directory for the renew subcommand."""
         return os.path.join(self.renewal_hooks_dir,
                             constants.RENEWAL_POST_HOOKS_DIR)
 
 
-def check_config_sanity(config):
+def check_config_sanity(config: NamespaceConfig) -> None:
     """Validate command line options and display error message if
     requirements are not met.
 
