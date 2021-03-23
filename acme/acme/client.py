@@ -2,7 +2,6 @@
 import base64
 import collections
 import datetime
-from datetime import datetime
 from email.utils import parsedate_tz
 import heapq
 import http.client as http_client
@@ -171,7 +170,7 @@ class ClientBase:
         return challr
 
     @classmethod
-    def retry_after(cls, response: Any, default: int) -> datetime:
+    def retry_after(cls, response: Any, default: int) -> datetime.datetime:
         """Compute next `poll` time based on response ``Retry-After`` header.
 
         Handles integers and various datestring formats per

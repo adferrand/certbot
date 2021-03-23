@@ -11,9 +11,6 @@ from acme import errors
 from acme import fields
 from acme import jws
 from acme import util
-from acme.messages import Error
-from acme.messages import NewRegistration
-from acme.messages import Status
 from acme.mixins import ResourceMixin
 
 OLD_ERROR_PREFIX = "urn:acme:error:"
@@ -59,13 +56,6 @@ ERROR_TYPE_DESCRIPTIONS.update(dict(  # add errors with old prefix, deprecate me
     (OLD_ERROR_PREFIX + name, desc) for name, desc in ERROR_CODES.items()))
 
 
-def is_acme_error(err: Error) -> bool:
-    """Check if argument is an ACME error."""
-    if isinstance(err, Error) and (err.typ is not None):
-        return (ERROR_PREFIX in err.typ) or (OLD_ERROR_PREFIX in err.typ)
-    return False
-
-
 class Error(jose.JSONObjectWithFields, errors.Error):
     """ACME error.
 
@@ -81,7 +71,7 @@ class Error(jose.JSONObjectWithFields, errors.Error):
     detail = jose.Field('detail', omitempty=True)
 
     @classmethod
-    def with_code(cls, code: str, **kwargs: Any) -> Error:
+    def with_code(cls, code: str, **kwargs: Any) -> 'Error':
         """Create an Error instance with an ACME Error code.
 
         :unicode code: An ACME error code, like 'dnssec'.
@@ -92,10 +82,10 @@ class Error(jose.JSONObjectWithFields, errors.Error):
             raise ValueError("The supplied code: %s is not a known ACME error"
                              " code" % code)
         typ = ERROR_PREFIX + code
-        return cls(typ=typ, **kwargs)
+        return cls(typ=typ, **kwargs)  # type: ignore
 
     @property
-    def description(self) -> str:
+    def description(self) -> Optional[str]:
         """Hardcoded error description based on its type.
 
         :returns: Description if standard ACME error or ``None``.
@@ -105,7 +95,7 @@ class Error(jose.JSONObjectWithFields, errors.Error):
         return ERROR_TYPE_DESCRIPTIONS.get(self.typ)
 
     @property
-    def code(self) -> str:
+    def code(self) -> Optional[str]:
         """ACME error code.
 
         Basically self.typ without the ERROR_PREFIX.
@@ -149,8 +139,10 @@ class _Constant(jose.JSONDeSerializable, Hashable):  # type: ignore
     def __repr__(self):
         return '{0}({1})'.format(self.__class__.__name__, self.name)
 
-    def __eq__(self, other: Status) -> bool:
-        return isinstance(other, type(self)) and other.name == self.name
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _Constant):
+            return NotImplemented
+        return other.name == self.name
 
     def __hash__(self):
         return hash((self.__class__, self.name))
@@ -159,6 +151,8 @@ class _Constant(jose.JSONDeSerializable, Hashable):  # type: ignore
 class Status(_Constant):
     """ACME "status" field."""
     POSSIBLE_NAMES: dict = {}
+
+
 STATUS_UNKNOWN = Status('unknown')
 STATUS_PENDING = Status('pending')
 STATUS_PROCESSING = Status('processing')
@@ -172,6 +166,8 @@ STATUS_DEACTIVATED = Status('deactivated')
 class IdentifierType(_Constant):
     """ACME identifier type."""
     POSSIBLE_NAMES: dict = {}
+
+
 IDENTIFIER_FQDN = IdentifierType('dns')  # IdentifierDNS in Boulder
 
 
@@ -323,7 +319,9 @@ class Registration(ResourceBody):
     email_prefix = 'mailto:'
 
     @classmethod
-    def from_data(cls, phone: Optional[Any] = None, email: Optional[str] = None, external_account_binding: Optional[Any] = None, **kwargs: Any) -> NewRegistration:
+    def from_data(cls, phone: Optional[Any] = None, email: Optional[str] = None,
+                  external_account_binding: Optional[Any] = None,
+                  **kwargs: Any) -> 'NewRegistration':
         """
         Create registration resource from contact details.
 
@@ -636,6 +634,7 @@ class Order(ResourceBody):
     def identifiers(value):  # pylint: disable=no-self-argument,missing-function-docstring
         return tuple(Identifier.from_json(identifier) for identifier in value)
 
+
 class OrderResource(ResourceWithURI):
     """Order Resource.
 
@@ -656,7 +655,15 @@ class OrderResource(ResourceWithURI):
     fullchain_pem = jose.Field('fullchain_pem', omitempty=True)
     alternative_fullchains_pem = jose.Field('alternative_fullchains_pem', omitempty=True)
 
+
 @Directory.register
 class NewOrder(Order):
     """New order."""
     resource_type = 'new-order'
+
+
+def is_acme_error(err: Error) -> bool:
+    """Check if argument is an ACME error."""
+    if isinstance(err, Error) and (err.typ is not None):
+        return (ERROR_PREFIX in err.typ) or (OLD_ERROR_PREFIX in err.typ)
+    return False

@@ -2,7 +2,7 @@
 
 from argparse import Namespace
 import logging
-from typing import Tuple
+from typing import Tuple, Union
 
 import zope.component
 
@@ -239,11 +239,11 @@ def choose_configurator_plugins(config, plugins, verb):
     return installer, authenticator
 
 
-def set_configurator(previously: _Default, now: _Default) -> _Default:
+def set_configurator(previously: Union[_Default, Union[_Default, str]], now: str) -> str:
     """
     Setting configurators multiple ways is okay, as long as they all agree
     :param str previously: previously identified request for the installer/authenticator
-    :param str requested: the request currently being processed
+    :param str now: the request currently being processed
     """
     if not now:
         # we're not actually setting anything

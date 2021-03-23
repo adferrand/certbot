@@ -18,7 +18,6 @@ from certbot import errors
 from certbot import interfaces
 from certbot import util
 from certbot._internal import constants
-from certbot._internal.cli.cli_utils import _Default
 from certbot._internal.cli.helpful import HelpfulArgumentParser
 from certbot.compat import os
 
@@ -29,7 +28,7 @@ class _Default:
     def __bool__(self) -> bool:
         return False
 
-    def __eq__(self, other: Union[_Default, str]) -> bool:
+    def __eq__(self, other: Union['_Default', str]) -> bool:
         return isinstance(other, _Default)
 
     def __hash__(self) -> int:
