@@ -13,5 +13,5 @@ warnings.warn("acme.magic_typing is deprecated and will be removed in a future r
 
 class TypingClass:
     """Ignore import errors by getting anything"""
-    def __getattr__(self, name):
+    def __getattr__(self, name) -> None:
         return None  # pragma: no cover

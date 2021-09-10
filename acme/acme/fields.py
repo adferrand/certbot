@@ -3,14 +3,15 @@ import logging
 
 import josepy as jose
 import pyrfc3339
+from datetime import datetime
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class Fixed(jose.Field):
     """Fixed field."""
 
-    def __init__(self, json_name, value):
+    def __init__(self, json_name, value) -> None:
         self.value = value
         super().__init__(
             json_name=json_name, default=value, omitempty=False)
@@ -37,11 +38,11 @@ class RFC3339Field(jose.Field):
     """
 
     @classmethod
-    def default_encoder(cls, value):
+    def default_encoder(cls, value: datetime) -> str:
         return pyrfc3339.generate(value)
 
     @classmethod
-    def default_decoder(cls, value):
+    def default_decoder(cls, value: str) -> datetime:
         try:
             return pyrfc3339.parse(value)
         except ValueError as error:
@@ -51,7 +52,7 @@ class RFC3339Field(jose.Field):
 class Resource(jose.Field):
     """Resource MITM field."""
 
-    def __init__(self, resource_type, *args, **kwargs):
+    def __init__(self, resource_type, *args, **kwargs) -> None:
         self.resource_type = resource_type
         super().__init__(
             'resource', default=resource_type, *args, **kwargs)

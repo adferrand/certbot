@@ -4,18 +4,18 @@
 class VersionedLEACMEMixin:
     """This mixin stores the version of Let's Encrypt's endpoint being used."""
     @property
-    def le_acme_version(self):
+    def le_acme_version(self) -> None:
         """Define the version of ACME protocol to use"""
         return getattr(self, '_le_acme_version', 1)
 
     @le_acme_version.setter
-    def le_acme_version(self, version):
+    def le_acme_version(self, version) -> None:
         # We need to use object.__setattr__ to not depend on the specific implementation of
         # __setattr__  in current class (eg. jose.TypedJSONObjectWithFields raises AttributeError
         # for any attempt to set an attribute to make objects immutable).
         object.__setattr__(self, '_le_acme_version', version)
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value) -> None:
         if key == 'le_acme_version':
             # Required for @property to operate properly. See comment above.
             object.__setattr__(self, key, value)

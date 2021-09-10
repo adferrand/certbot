@@ -13,13 +13,13 @@ from typing import Optional
 from acme import challenges
 from acme import crypto_util
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class TLSServer(socketserver.TCPServer):
     """Generic TLS Server."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.ipv6 = kwargs.pop("ipv6", False)
         if self.ipv6:
             self.address_family = socket.AF_INET6
@@ -31,7 +31,7 @@ class TLSServer(socketserver.TCPServer):
         self.allow_reuse_address = kwargs.pop("allow_reuse_address", True)
         socketserver.TCPServer.__init__(self, *args, **kwargs)
 
-    def _wrap_sock(self):
+    def _wrap_sock(self) -> None:
         self.socket = crypto_util.SSLSocket(
             self.socket, cert_selection=self._cert_selection,
             alpn_selection=getattr(self, '_alpn_selection', None),
@@ -42,7 +42,7 @@ class TLSServer(socketserver.TCPServer):
         server_name = connection.get_servername()
         return self.certs.get(server_name, None)
 
-    def server_bind(self):
+    def server_bind(self) -> None:
         self._wrap_sock()
         return socketserver.TCPServer.server_bind(self)
 
@@ -62,7 +62,7 @@ class BaseDualNetworkedServers:
        If two servers are instantiated, they will serve on the same port.
        """
 
-    def __init__(self, ServerClass, server_address, *remaining_args, **kwargs):
+    def __init__(self, ServerClass, server_address, *remaining_args, **kwargs) -> None:
         port = server_address[1]
         self.threads: List[threading.Thread] = []
         self.servers: List[socketserver.BaseServer] = []
@@ -111,7 +111,7 @@ class BaseDualNetworkedServers:
             else: # pragma: no cover
                 raise socket.error("Could not bind to IPv4 or IPv6.")
 
-    def serve_forever(self):
+    def serve_forever(self) -> None:
         """Wraps socketserver.TCPServer.serve_forever"""
         for server in self.servers:
             thread = threading.Thread(
@@ -123,7 +123,7 @@ class BaseDualNetworkedServers:
         """Wraps socketserver.TCPServer.socket.getsockname"""
         return [server.socket.getsockname() for server in self.servers]
 
-    def shutdown_and_server_close(self):
+    def shutdown_and_server_close(self) -> None:
         """Wraps socketserver.TCPServer.shutdown, socketserver.TCPServer.server_close, and
            threading.Thread.join"""
         for server in self.servers:
@@ -139,7 +139,7 @@ class TLSALPN01Server(TLSServer, ACMEServerMixin):
 
     ACME_TLS_1_PROTOCOL = b"acme-tls/1"
 
-    def __init__(self, server_address, certs, challenge_certs, ipv6=False):
+    def __init__(self, server_address, certs, challenge_certs, ipv6: bool=False) -> None:
         TLSServer.__init__(
             self, server_address, _BaseRequestHandlerWithLogging, certs=certs,
             ipv6=ipv6)
@@ -157,7 +157,7 @@ class TLSALPN01Server(TLSServer, ACMEServerMixin):
         logger.debug("Serving challenge cert for server name %s", server_name)
         return self.challenge_certs.get(server_name, None)
 
-    def _alpn_selection(self, _connection, alpn_protos):
+    def _alpn_selection(self, _connection, alpn_protos) -> bytes:
         """Callback to select alpn protocol."""
         if len(alpn_protos) == 1 and alpn_protos[0] == self.ACME_TLS_1_PROTOCOL:
             logger.debug("Agreed on %s ALPN", self.ACME_TLS_1_PROTOCOL)
@@ -171,7 +171,7 @@ class TLSALPN01Server(TLSServer, ACMEServerMixin):
 class HTTPServer(BaseHTTPServer.HTTPServer):
     """Generic HTTP Server."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.ipv6 = kwargs.pop("ipv6", False)
         if self.ipv6:
             self.address_family = socket.AF_INET6
@@ -183,7 +183,7 @@ class HTTPServer(BaseHTTPServer.HTTPServer):
 class HTTP01Server(HTTPServer, ACMEServerMixin):
     """HTTP01 Server."""
 
-    def __init__(self, server_address, resources, ipv6=False, timeout=30):
+    def __init__(self, server_address, resources, ipv6: bool=False, timeout: int=30) -> None:
         HTTPServer.__init__(
             self, server_address, HTTP01RequestHandler.partial_init(
                 simple_http_resources=resources, timeout=timeout), ipv6=ipv6)
@@ -193,7 +193,7 @@ class HTTP01DualNetworkedServers(BaseDualNetworkedServers):
     """HTTP01Server Wrapper. Tries everything for both. Failures for one don't
        affect the other."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         BaseDualNetworkedServers.__init__(self, HTTP01Server, *args, **kwargs)
 
 
@@ -209,7 +209,7 @@ class HTTP01RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     HTTP01Resource = collections.namedtuple(
         "HTTP01Resource", "chall response validation")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.simple_http_resources = kwargs.pop("simple_http_resources", set())
         self._timeout = kwargs.pop('timeout', 30)
         BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
@@ -230,16 +230,16 @@ class HTTP01RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         """
         return self._timeout
 
-    def log_message(self, format, *args):  # pylint: disable=redefined-builtin
+    def log_message(self, format: str, *args) -> None:  # pylint: disable=redefined-builtin
         """Log arbitrary message."""
         logger.debug("%s - - %s", self.client_address[0], format % args)
 
-    def handle(self):
+    def handle(self) -> None:
         """Handle request."""
         self.log_message("Incoming request")
         BaseHTTPServer.BaseHTTPRequestHandler.handle(self)
 
-    def do_GET(self):  # pylint: disable=invalid-name,missing-function-docstring
+    def do_GET(self) -> None:  # pylint: disable=invalid-name,missing-function-docstring
         if self.path == "/":
             self.handle_index()
         elif self.path.startswith("/" + challenges.HTTP01.URI_ROOT_PATH):
@@ -247,21 +247,21 @@ class HTTP01RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         else:
             self.handle_404()
 
-    def handle_index(self):
+    def handle_index(self) -> None:
         """Handle index page."""
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
         self.end_headers()
         self.wfile.write(self.server.server_version.encode())
 
-    def handle_404(self):
+    def handle_404(self) -> None:
         """Handler 404 Not Found errors."""
         self.send_response(http_client.NOT_FOUND, message="Not Found")
         self.send_header("Content-type", "text/html")
         self.end_headers()
         self.wfile.write(b"404")
 
-    def handle_simple_http_resource(self):
+    def handle_simple_http_resource(self) -> None:
         """Handle HTTP01 provisioned resources."""
         for resource in self.simple_http_resources:
             if resource.chall.path == self.path:
@@ -277,7 +277,7 @@ class HTTP01RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                          self.path)
 
     @classmethod
-    def partial_init(cls, simple_http_resources, timeout):
+    def partial_init(cls, simple_http_resources, timeout) -> functools.partial[HTTP01RequestHandler]:
         """Partially initialize this handler.
 
         This is useful because `socketserver.BaseServer` takes
@@ -293,11 +293,11 @@ class HTTP01RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 class _BaseRequestHandlerWithLogging(socketserver.BaseRequestHandler):
     """BaseRequestHandler with logging."""
 
-    def log_message(self, format, *args):  # pylint: disable=redefined-builtin
+    def log_message(self, format, *args) -> None:  # pylint: disable=redefined-builtin
         """Log arbitrary message."""
         logger.debug("%s - - %s", self.client_address[0], format % args)
 
-    def handle(self):
+    def handle(self) -> None:
         """Handle request."""
         self.log_message("Incoming request")
         socketserver.BaseRequestHandler.handle(self)
