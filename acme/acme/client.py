@@ -13,7 +13,7 @@ import re
 import sys
 import time
 from types import ModuleType
-from typing import Optional, cast, Tuple, Any
+from typing import Optional, cast, Tuple, Any, Callable
 from typing import Dict
 from typing import List
 from typing import Set
@@ -95,7 +95,7 @@ class ClientNetwork:
         except Exception:  # pylint: disable=broad-except
             pass
 
-    def _wrap_in_jws(self, obj: VersionedLEACMEMixin, nonce: bytes, url: str,
+    def _wrap_in_jws(self, obj: josepy.interfaces.JSONDeSerializable, nonce: str, url: str,
                      acme_version: int) -> josepy.JWS:
         """Wrap `JSONDeSerializable` object in JWS.
 
@@ -122,7 +122,7 @@ class ClientNetwork:
             if self.account is not None:
                 kwargs["kid"] = self.account["uri"]
         kwargs["key"] = self.key
-        return jws.JWS.sign(jobj, **kwargs).json_dumps(indent=2)
+        return jws.JWS.sign(jobj, **kwargs).json_dumps(indent=2)  # type: ignore
 
     @classmethod
     def _check_response(cls, response: Response, content_type: Optional[str] = None) -> Response:
@@ -261,7 +261,7 @@ class ClientNetwork:
                      debug_content)
         return response
 
-    def head(self, *args, **kwargs) -> Response:
+    def head(self, *args: Any, **kwargs: Any) -> Response:
         """Send HEAD request without checking the response.
 
         Note, that `_check_response` is not called, as it is expected
@@ -271,12 +271,12 @@ class ClientNetwork:
         """
         return self._send_request('HEAD', *args, **kwargs)
 
-    def get(self, url, content_type: str=JSON_CONTENT_TYPE, **kwargs) -> Response:
+    def get(self, url: str, content_type: str = JSON_CONTENT_TYPE, **kwargs: Any) -> Response:
         """Send GET request and check response."""
         return self._check_response(
             self._send_request('GET', url, **kwargs), content_type=content_type)
 
-    def _add_nonce(self, response) -> None:
+    def _add_nonce(self, response: Response) -> None:
         if self.REPLAY_NONCE_HEADER in response.headers:
             nonce = response.headers[self.REPLAY_NONCE_HEADER]
             try:
@@ -288,7 +288,7 @@ class ClientNetwork:
         else:
             raise errors.MissingNonce(response)
 
-    def _get_nonce(self, url, new_nonce_url) -> str:
+    def _get_nonce(self, url: str, new_nonce_url: str) -> str:
         if not self._nonces:
             logger.debug('Requesting fresh nonce')
             if new_nonce_url is None:
@@ -299,7 +299,7 @@ class ClientNetwork:
             self._add_nonce(response)
         return self._nonces.pop()
 
-    def post(self, *args, **kwargs) -> Response:
+    def post(self, *args: Any, **kwargs: Any) -> Response:
         """POST object wrapped in `.JWS` and check response.
 
         If the server responded with a badNonce error, the request will
@@ -314,8 +314,9 @@ class ClientNetwork:
                 return self._post_once(*args, **kwargs)
             raise
 
-    def _post_once(self, url, obj, content_type: str = JOSE_CONTENT_TYPE,
-                   acme_version: int=1, **kwargs) -> Response:
+    def _post_once(self, url: str, obj: josepy.interfaces.JSONDeSerializable,
+                   content_type: str = JOSE_CONTENT_TYPE, acme_version: int = 1,
+                   **kwargs: Any) -> Response:
         new_nonce_url = kwargs.pop('new_nonce_url', None)
         data = self._wrap_in_jws(obj, self._get_nonce(url, new_nonce_url), url, acme_version)
         kwargs.setdefault('headers', {'Content-Type': content_type})
@@ -345,8 +346,9 @@ class ClientBase:
         self.acme_version = acme_version
 
     @classmethod
-    def _regr_from_response(cls, response, uri=None,
-                            terms_of_service=None) -> messages.RegistrationResource:
+    def _regr_from_response(cls, response: Response, uri: Optional[str] = None,
+                            terms_of_service: Optional[str] = None
+                            ) -> messages.RegistrationResource:
         if 'terms-of-service' in response.links:
             terms_of_service = response.links['terms-of-service']['url']
 
@@ -369,7 +371,7 @@ class ClientBase:
             response, uri=regr.uri,
             terms_of_service=regr.terms_of_service)
 
-    def _post(self, *args, **kwargs) -> Response:
+    def _post(self, *args: Any, **kwargs: Any) -> Response:
         """Wrapper around self.net.post that adds the acme_version.
 
         """
@@ -437,7 +439,7 @@ class ClientBase:
         return authzr
 
     def answer_challenge(self, challb: messages.ChallengeBody,
-                         response: challenges.ChallengeResponse) -> messages.ChallengeResource:
+                         response: Response) -> messages.ChallengeResource:
         """Answer challenge.
 
         :param challb: Challenge Resource body.
@@ -817,7 +819,7 @@ class Client(ClientBase):
             raise errors.ClientError('Location header missing')
         if response.headers['Location'] != certr.uri:
             raise errors.UnexpectedUpdate(response.text)
-        return certr.update(body=cert)
+        return cast(messages.CertificateResource, certr.update(body=cert))
 
     def refresh(self, certr: messages.CertificateResource) -> messages.CertificateResource:
         """Refresh certificate.
@@ -891,8 +893,7 @@ class ClientV2(ClientBase):
         :param .messages.Directory directory: Directory Resource
         :param .ClientNetwork net: Client network.
         """
-        super().__init__(directory=directory,
-            net=net, acme_version=2)
+        super().__init__(directory=directory, net=net, acme_version=2)
 
     def new_account(self, new_account: messages.NewRegistration) -> messages.RegistrationResource:
         """Register.
@@ -929,7 +930,7 @@ class ClientV2(ClientBase):
                                                     terms_of_service=regr.terms_of_service)
         return self.net.account
 
-    def update_registration(self, regr: messages.RegistrationResource, update: bool = None
+    def update_registration(self, regr: messages.RegistrationResource, update: Optional[bool] = None
                             ) -> messages.RegistrationResource:
         """Update registration.
 
@@ -950,11 +951,11 @@ class ClientV2(ClientBase):
         only_existing_reg = regr.body.update(only_return_existing=True)
         response = self._post(self.directory['newAccount'], only_existing_reg)
         updated_uri = response.headers['Location']
-        new_regr = regr.update(uri=updated_uri)
+        new_regr: messages.RegistrationResource = regr.update(uri=updated_uri)
         self.net.account = new_regr
         return new_regr
 
-    def new_order(self, csr_pem: str) -> messages.OrderResource:
+    def new_order(self, csr_pem: bytes) -> messages.OrderResource:
         """Request a new Order object from the server.
 
         :param str csr_pem: A CSR in PEM format.
@@ -1048,7 +1049,7 @@ class ClientV2(ClientBase):
                         failed.append(authzr)
         if failed:
             raise errors.ValidationError(failed)
-        return orderr.update(authorizations=responses)
+        return cast(messages.OrderResource, orderr.update(authorizations=responses))
 
     def finalize_order(self, orderr: messages.OrderResource, deadline: datetime.datetime,
                        fetch_alternative_chains: bool = False) -> messages.OrderResource:
@@ -1083,7 +1084,7 @@ class ClientV2(ClientBase):
                 return orderr
         raise errors.TimeoutError()
 
-    def revoke(self, cert, rsn):
+    def revoke(self, cert: josepy.util.ComparableX509, rsn: int) -> None:
         """Revoke certificate.
 
         :param .ComparableX509 cert: `OpenSSL.crypto.X509` wrapped in
@@ -1094,13 +1095,13 @@ class ClientV2(ClientBase):
         :raises .ClientError: If revocation is unsuccessful.
 
         """
-        return self._revoke(cert, rsn, self.directory['revokeCert'])
+        self._revoke(cert, rsn, self.directory['revokeCert'])
 
     def external_account_required(self) -> bool:
         """Checks if ACME server requires External Account Binding authentication."""
         return hasattr(self.directory, 'meta') and self.directory.meta.external_account_required
 
-    def _post_as_get(self, *args, **kwargs):
+    def _post_as_get(self, *args: Any, **kwargs: Any) -> Response:
         """
         Send GET request using the POST-as-GET protocol.
         :param args:
@@ -1110,7 +1111,7 @@ class ClientV2(ClientBase):
         new_args = args[:1] + (None,) + args[1:]
         return self._post(*new_args, **kwargs)
 
-    def _get_links(self, response, relation_type):
+    def _get_links(self, response: Response, relation_type: str) -> List[str]:
         """
         Retrieves all Link URIs of relation_type from the response.
         :param requests.Response response: The requests HTTP response.
@@ -1147,7 +1148,7 @@ class BackwardsCompatibleClientV2:
     :ivar .ClientBase client: either Client or ClientV2
     """
 
-    def __init__(self, net, key, server) -> None:
+    def __init__(self, net: ClientNetwork, key: josepy.JWK, server: str) -> None:
         directory = messages.Directory.from_json(net.get(server).json())
         self.acme_version = self._acme_version_from_directory(directory)
         self.client: Union[Client, ClientV2]
@@ -1156,17 +1157,19 @@ class BackwardsCompatibleClientV2:
         else:
             self.client = ClientV2(directory, net=net)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.client, name)
 
-    def new_account_and_tos(self, regr, check_tos_cb=None):
+    def new_account_and_tos(self, regr: messages.NewRegistration,
+                            check_tos_cb: Optional[Callable[[str], None]] = None
+                            ) -> messages.RegistrationResource:
         """Combined register and agree_tos for V1, new_account for V2
 
         :param .NewRegistration regr:
         :param callable check_tos_cb: callback that raises an error if
             the check does not work
         """
-        def _assess_tos(tos):
+        def _assess_tos(tos: str) -> None:
             if check_tos_cb is not None:
                 check_tos_cb(tos)
         if self.acme_version == 1:
@@ -1209,7 +1212,7 @@ class BackwardsCompatibleClientV2:
             return messages.OrderResource(authorizations=authorizations, csr_pem=csr_pem)
         return cast(ClientV2, self.client).new_order(csr_pem)
 
-    def finalize_order(self, orderr: messages.OrderResource, deadline,
+    def finalize_order(self, orderr: messages.OrderResource, deadline: datetime.datetime,
                        fetch_alternative_chains: bool = False) -> messages.OrderResource:
         """Finalize an order and obtain a certificate.
 

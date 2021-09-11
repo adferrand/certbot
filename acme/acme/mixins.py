@@ -4,7 +4,7 @@
 class VersionedLEACMEMixin:
     """This mixin stores the version of Let's Encrypt's endpoint being used."""
     @property
-    def le_acme_version(self) -> None:
+    def le_acme_version(self) -> int:
         """Define the version of ACME protocol to use"""
         return getattr(self, '_le_acme_version', 1)
 

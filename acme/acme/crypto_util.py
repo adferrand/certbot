@@ -1,13 +1,19 @@
 """Crypto utilities."""
 import binascii
 import contextlib
+import ipaddress
 import logging
 import os
 import re
 import socket
 from typing import Callable
+from typing import List
 from typing import Tuple
 from typing import Union
+from typing import Optional
+from typing import Dict
+from typing import Any
+from typing import cast
 
 import josepy as jose
 from OpenSSL import crypto
@@ -28,10 +34,10 @@ _DEFAULT_SSL_METHOD = SSL.SSLv23_METHOD
 
 
 class _DefaultCertSelection:
-    def __init__(self, certs):
+    def __init__(self, certs: Dict[bytes, Tuple[crypto.PKey, crypto.X509]]):
         self.certs = certs
 
-    def __call__(self, connection):
+    def __call__(self, connection: SSL.Connection) -> Optional[Tuple[crypto.PKey, crypto.X509]]:
         server_name = connection.get_servername()
         return self.certs.get(server_name, None)
 
@@ -49,9 +55,11 @@ class SSLSocket:  # pylint: disable=too-few-public-methods
         `certs` parameter would be ignored, and therefore must be empty.
 
     """
-    def __init__(self, sock, certs=None,
-            method=_DEFAULT_SSL_METHOD, alpn_selection=None,
-            cert_selection=None):
+    def __init__(self, sock: socket.socket,
+                 certs: Optional[Dict[bytes, Tuple[crypto.PKey, crypto.X509]]] = None,
+                 method: int = _DEFAULT_SSL_METHOD,
+                 alpn_selection: Optional[Callable[[SSL.Connection, List[bytes]], bytes]] = None,
+                 cert_selection: Optional[_DefaultCertSelection] = None) -> None:
         self.sock = sock
         self.alpn_selection = alpn_selection
         self.method = method
@@ -60,13 +68,13 @@ class SSLSocket:  # pylint: disable=too-few-public-methods
         if cert_selection and certs:
             raise ValueError("Both cert_selection and certs specified.")
         if cert_selection is None:
-            cert_selection = _DefaultCertSelection(certs)
+            cert_selection = _DefaultCertSelection(certs if certs else {})
         self.cert_selection = cert_selection
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.sock, name)
 
-    def _pick_certificate_cb(self, connection):
+    def _pick_certificate_cb(self, connection: SSL.Connection) -> None:
         """SNI certificate callback.
 
         This method will set a new OpenSSL context object for this
@@ -98,17 +106,17 @@ class SSLSocket:  # pylint: disable=too-few-public-methods
 
         # pylint: disable=missing-function-docstring
 
-        def __init__(self, connection):
+        def __init__(self, connection: SSL.Connection) -> None:
             self._wrapped = connection
 
-        def __getattr__(self, name):
+        def __getattr__(self, name: str) -> Any:
             return getattr(self._wrapped, name)
 
-        def shutdown(self, *unused_args):
+        def shutdown(self, *unused_args: Any) -> Any:
             # OpenSSL.SSL.Connection.shutdown doesn't accept any args
             return self._wrapped.shutdown()
 
-    def accept(self):  # pylint: disable=missing-function-docstring
+    def accept(self) -> Tuple[SSL.Connection, Any]:  # pylint: disable=missing-function-docstring
         sock, addr = self.sock.accept()
 
         context = SSL.Context(self.method)
@@ -129,17 +137,17 @@ class SSLSocket:  # pylint: disable=too-few-public-methods
             # creating SSL context (wrong server name)
             raise socket.error(error)
 
-        return ssl_sock, addr
+        return cast(SSL.Connection, ssl_sock), addr
 
 
-def probe_sni(name, host, port=443, timeout=300, # pylint: disable=too-many-arguments
-              method=_DEFAULT_SSL_METHOD, source_address=('', 0),
-              alpn_protocols=None):
+def probe_sni(name: bytes, host: str, port: int = 443, timeout: int = 300,  # pylint: disable=too-many-arguments
+              method: int = _DEFAULT_SSL_METHOD, source_address: Tuple[str, int] = ('', 0),
+              alpn_protocols: Optional[List[bytes]] = None) -> crypto.X509:
     """Probe SNI server for SSL certificate.
 
-    :param bytes name: Byte string to send as the server name in the
+    :param bytes name: Bytes string to send as the server name in the
         client hello message.
-    :param bytes host: Host to connect to.
+    :param str host: Host to connect to.
     :param int port: Port to connect to.
     :param int timeout: Timeout in seconds.
     :param method: See `OpenSSL.SSL.Context` for allowed values.
@@ -187,7 +195,10 @@ def probe_sni(name, host, port=443, timeout=300, # pylint: disable=too-many-argu
     return client_ssl.get_peer_certificate()
 
 
-def make_csr(private_key_pem, domains=None, must_staple=False, ipaddrs=None):
+def make_csr(private_key_pem: Union[str, bytes], domains: Optional[List[str]] = None,
+             must_staple: bool = False,
+             ipaddrs: Optional[List[Union[ipaddress.IPv4Address, ipaddress.IPv6Address]]] = None
+             ) -> bytes:
     """Generate a CSR containing domains or IPs as subjectAltNames.
 
     :param buffer private_key_pem: Private key, in PEM PKCS#8 format.
@@ -234,11 +245,11 @@ def make_csr(private_key_pem, domains=None, must_staple=False, ipaddrs=None):
     csr.set_pubkey(private_key)
     csr.set_version(2)
     csr.sign(private_key, 'sha256')
-    return crypto.dump_certificate_request(
-        crypto.FILETYPE_PEM, csr)
+    return crypto.dump_certificate_request(crypto.FILETYPE_PEM, csr)
 
 
-def _pyopenssl_cert_or_req_all_names(loaded_cert_or_req):
+def _pyopenssl_cert_or_req_all_names(loaded_cert_or_req: Union[crypto.X509, crypto.X509Req]
+                                     ) -> List[str]:
     # unlike its name this only outputs DNS names, other type of idents will ignored
     common_name = loaded_cert_or_req.get_subject().CN
     sans = _pyopenssl_cert_or_req_san(loaded_cert_or_req)
@@ -248,7 +259,7 @@ def _pyopenssl_cert_or_req_all_names(loaded_cert_or_req):
     return [common_name] + [d for d in sans if d != common_name]
 
 
-def _pyopenssl_cert_or_req_san(cert_or_req):
+def _pyopenssl_cert_or_req_san(cert_or_req: Union[crypto.X509, crypto.X509Req]) -> List[str]:
     """Get Subject Alternative Names from certificate or CSR using pyOpenSSL.
 
     .. todo:: Implement directly in PyOpenSSL!
@@ -275,7 +286,7 @@ def _pyopenssl_cert_or_req_san(cert_or_req):
             for part in sans_parts if part.startswith(prefix)]
 
 
-def _pyopenssl_cert_or_req_san_ip(cert_or_req):
+def _pyopenssl_cert_or_req_san_ip(cert_or_req: Union[crypto.X509, crypto.X509Req]) -> List[str]:
     """Get Subject Alternative Names IPs from certificate or CSR using pyOpenSSL.
 
     :param cert_or_req: Certificate or CSR.
@@ -295,7 +306,7 @@ def _pyopenssl_cert_or_req_san_ip(cert_or_req):
     return [part[len(prefix):] for part in sans_parts if part.startswith(prefix)]
 
 
-def _pyopenssl_extract_san_list_raw(cert_or_req):
+def _pyopenssl_extract_san_list_raw(cert_or_req: Union[crypto.X509, crypto.X509Req]) -> List[str]:
     """Get raw SAN string from cert or csr, parse it as UTF-8 and return.
 
     :param cert_or_req: Certificate or CSR.
@@ -310,12 +321,11 @@ def _pyopenssl_extract_san_list_raw(cert_or_req):
     # is used to because in PyOpenSSL version <0.17 `_subjectAltNameString` methods are
     # not able to Parse IP Addresses in subjectAltName string.
 
+    text: str
     if isinstance(cert_or_req, crypto.X509):
-        # pylint: disable=line-too-long
-        func: Union[Callable[[int, crypto.X509Req], bytes], Callable[[int, crypto.X509], bytes]] = crypto.dump_certificate
+        text = crypto.dump_certificate(crypto.FILETYPE_TEXT, cert_or_req).decode("utf-8")
     else:
-        func = crypto.dump_certificate_request
-    text = func(crypto.FILETYPE_TEXT, cert_or_req).decode("utf-8")
+        text = crypto.dump_certificate_request(crypto.FILETYPE_TEXT, cert_or_req).decode("utf-8")
     # WARNING: this function does not support multiple SANs extensions.
     # Multiple X509v3 extensions of the same type is disallowed by RFC 5280.
     raw_san = re.search(r"X509v3 Subject Alternative Name:(?: critical)?\s*(.*)", text)
@@ -327,8 +337,11 @@ def _pyopenssl_extract_san_list_raw(cert_or_req):
     return sans_parts
 
 
-def gen_ss_cert(key, domains=None, not_before=None,
-                validity=(7 * 24 * 60 * 60), force_san=True, extensions=None, ips=None):
+def gen_ss_cert(key: crypto.PKey, domains: Optional[List[str]] = None,
+                not_before: Optional[int] = None, validity: int = (7 * 24 * 60 * 60),
+                force_san: bool = True, extensions: Optional[List[crypto.X509Extension]] = None,
+                ips: Optional[List[Union[ipaddress.IPv4Address, ipaddress.IPv6Address]]] = None
+                ) -> crypto.X509:
     """Generate new self-signed certificate.
 
     :type domains: `list` of `unicode`
@@ -389,7 +402,8 @@ def gen_ss_cert(key, domains=None, not_before=None,
     return cert
 
 
-def dump_pyopenssl_chain(chain, filetype=crypto.FILETYPE_PEM):
+def dump_pyopenssl_chain(chain: List[Union[jose.ComparableX509, crypto.X509]],
+                         filetype: int = crypto.FILETYPE_PEM) -> bytes:
     """Dump certificate chain into a bundle.
 
     :param list chain: List of `OpenSSL.crypto.X509` (or wrapped in
@@ -402,7 +416,7 @@ def dump_pyopenssl_chain(chain, filetype=crypto.FILETYPE_PEM):
     # XXX: returns empty string when no chain is available, which
     # shuts up RenewableCert, but might not be the best solution...
 
-    def _dump_cert(cert):
+    def _dump_cert(cert: Union[jose.ComparableX509, crypto.X509]) -> bytes:
         if isinstance(cert, jose.ComparableX509):
             cert = cert.wrapped
         return crypto.dump_certificate(filetype, cert)
