@@ -72,5 +72,6 @@ jobs:
       - name: Run tox
         env:
           TOXENV: ${{ matrix.toxenv }}
+          ACME_SERVER: ${{ matrix.acme-server }}
         run: |
           python -m tox
