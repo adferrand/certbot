@@ -3,8 +3,7 @@ description: Setup test environment to run Certbot tests
 inputs:
   python-version:
     description: Python version to use
-    required: false
-    default: "3.10"
+    required: true
 runs:
   using: composite
   steps:
