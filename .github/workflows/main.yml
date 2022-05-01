@@ -1,10 +1,11 @@
 name: main
 
 on:
-  push:
+  push:  # To be removed
     branches: [master-github]
   pull_request:
     branches: [master-github, '*.x']
+  workflow_call:
 
 concurrency: 
   group: ${{ github.ref }}
@@ -72,6 +73,6 @@ jobs:
       - name: Run tox
         env:
           TOXENV: ${{ matrix.toxenv }}
-          ACME_SERVER: ${{ matrix.acme-server }}
+          ACME_SERVER: pebble
         run: |
           python -m tox

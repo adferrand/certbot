@@ -1,0 +1,83 @@
+name: advanced
+
+on:
+  push:
+    branches: [test-*]
+
+concurrency: 
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  main:
+    uses: adferrand/certbot/.github/workflows/main.yml@master-github  # To be changed
+  advanced-test:
+    strategy:
+      matrix:
+        os: [ubuntu-18.04]
+        python-version: ['3.8']
+        toxenv: [py38]
+        include:
+          - os: ubuntu-18.04
+            python-version: '3.9'
+            toxenv: py39
+          - os: ubuntu-18.04
+            python-version: '3.10'
+            toxenv: lint-posix
+          - os: ubuntu-18.04
+            python-version: '3.7'
+            toxenv: py37
+            certbot-no-pin: 1
+          - os: ubuntu-18.04
+            python-version: '3.10'
+            toxenv: external-mock
+          - os: ubuntu-18.04
+            python-version: '3.7'
+            toxenv: integration-certbot-oldest
+            acme-server: boulder-v2
+          - os: ubuntu-18.04
+            python-version: '3.7'
+            toxenv: integration-nginx-oldest
+            acme-server: boulder-v2
+          - os: ubuntu-18.04
+            python-version: '3.7'
+            toxenv: integration
+            acme-server: boulder-v2
+          - os: ubuntu-18.04
+            python-version: '3.8'
+            toxenv: integration
+            acme-server: boulder-v2
+          - os: ubuntu-18.04
+            python-version: '3.9'
+            toxenv: integration
+            acme-server: boulder-v2
+          - os: ubuntu-18.04
+            python-version: '3.10'
+            toxenv: nginx-compat
+          - os: ubuntu-18.04
+            python-version: '3.8'
+            toxenv: integration-dns-rfc2136
+          - os: ubuntu-18.04
+            python-version: '3.10'
+            toxenv: docker-dev
+          - os: ubuntu-18.04
+            python-version: '3.10'
+            toxenv: modification
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Prepare environment
+        uses: ./.github/actions/setup-test-env
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run tox
+        env:
+          TOXENV: ${{ matrix.toxenv }}
+          ACME_SERVER: ${{ matrix.acme-server }}
+          CERTBOT_NO_PIN: ${{ matrix.certbot-no-pin }}
+        shell: bash
+        run: |
+          env
+          python -m tox
