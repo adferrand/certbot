@@ -1,0 +1,41 @@
+name: Setup Certbot tests environment
+description: Setup test environment to run Certbot tests
+inputs:
+  python-version:
+    description: Python version to use
+    required: false
+    default: "3.10"
+runs:
+  using: composite
+  steps:
+    - name: Install MacOS dependencies
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        set -e
+        brew update
+        brew install augeas
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          python-dev \
+          gcc \
+          libaugeas0 \
+          libssl-dev \
+          libffi-dev \
+          ca-certificates \
+          nginx-light \
+          openssl
+        sudo systemctl stop nginx
+    - name: Install python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install runtime dependencies
+      shell: bash
+      run: |
+        python tools/pipstrap.py
+        python tools/pip_install.py -I tox virtualenv
