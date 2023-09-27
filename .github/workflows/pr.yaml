@@ -13,7 +13,7 @@ jobs:
           - toxenv: cover
             os: macos
             python-version: 3.11
-          - toxenv: py37-win
+          - toxenv: py-win
             os: windows
             python-version: 3.7
           - toxenv: cover-win
@@ -86,4 +86,3 @@ jobs:
           python3 -m tox
         env:
           TOXENV: ${{ matrix.toxenv }}
-          PYTEST_ADDOPTS: --numprocesses auto
