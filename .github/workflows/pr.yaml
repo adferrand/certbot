@@ -1,0 +1,103 @@
+name: Certbot PR build
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        include:
+          - name: macos-py37
+            os: macos
+            python-version: 3.7
+            toxenv: cover
+          - name: macos-cover
+            os: macos
+            python-version: 3.11
+            toxenv: cover
+          - name: windows-py37
+            os: windows
+            python-version: 3.7
+            toxenv: py-win
+          - name: windows-cover
+            os: windows
+            python-version: 3.9
+            toxenv: cover-win
+          - name: window-integration-certbot
+            os: windows
+            python-version: 3.9
+            toxenv: integration-certbot
+          - name: linux-oldest
+            os: linux
+            python-version: 3.7
+            toxenv: oldest
+          - name: linux-py37
+            os: linux
+            python-version: 3.7
+            toxenv: py37
+          - name: linux-cover
+            os: linux
+            python-version: 3.11
+            toxenv: cover
+          - name: linux
+            os: linux
+            python-version: 3.11
+            toxenv: lint-posix
+          - name: linux-lint
+            os: linux
+            python-version: 3.11
+            toxenv: mypy
+          - name: linux-integration
+            os: linux
+            python-version: 3.8
+            toxenv: integration
+          - name: apache-compat
+            os: linux
+            python-version: 3.11
+            toxenv: apache_compat
+          - name: apacheconftest
+            os: linux
+            python-version: 3.11
+            toxenv: apacheconftest-with-pebble
+          - name: nginxroundtrip
+            os: linux
+            python-version: 3.11
+            toxenv: nginxroundtrip
+      fail-fast: false
+    runs-on: ${{ matrix.os }}-latest
+    steps:
+      - name: Checkout Certbot code
+        uses: actions/checkout@v4
+      # As of pip 23.1.0, builds started failing on macOS unless env variable PIP_USE_PEP517 is set.
+      # See https://github.com/certbot/certbot/pull/9717#issuecomment-1610861794.
+      - name: Prepare MacOS runtime dependencies
+        run: |
+          unset HOMEBREW_NO_INSTALL_FROM_API
+          brew untap homebrew/core homebrew/cask
+          brew update
+          brew install augeas
+          echo "PIP_USE_PEP517=true" >> "$GITHUB_ENV"
+        if: matrix.os == 'macos'
+      - name: Prepare Linux runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libaugeas0 \
+            nginx-light
+          sudo systemctl stop nginx
+          sudo sysctl net.ipv4.ip_unprivileged_port_start=0
+        if: matrix.os == 'ubuntu'
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Python runtime dependencies
+        run: |
+          python3 tools/pip_install.py tox
+      - name: Run tox
+        run: |
+          env
+          python3 -m tox
+        env:
+          TOXENV: ${{ matrix.toxenv }}
+          PYTEST_ADDOPTS: --numprocesses auto
