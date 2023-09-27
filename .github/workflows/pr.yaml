@@ -7,62 +7,48 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: macos-py37
+          - toxenv: py37
             os: macos
             python-version: 3.7
-            toxenv: cover
-          - name: macos-cover
+          - toxenv: cover
             os: macos
             python-version: 3.11
-            toxenv: cover
-          - name: windows-py37
+          - toxenv: py37-win
             os: windows
             python-version: 3.7
-            toxenv: py-win
-          - name: windows-cover
+          - toxenv: cover-win
             os: windows
             python-version: 3.9
-            toxenv: cover-win
-          - name: window-integration-certbot
+          - toxenv: integration-certbot
             os: windows
             python-version: 3.9
-            toxenv: integration-certbot
-          - name: linux-oldest
-            os: linux
+          - toxenv: oldest
+            os: ubuntu
             python-version: 3.7
-            toxenv: oldest
-          - name: linux-py37
-            os: linux
+          - toxenv: py37
+            os: ubuntu
             python-version: 3.7
-            toxenv: py37
-          - name: linux-cover
-            os: linux
+          - toxenv: cover
+            os: ubuntu
             python-version: 3.11
-            toxenv: cover
-          - name: linux
-            os: linux
+          - toxenv: lint-posix
+            os: ubuntu
             python-version: 3.11
-            toxenv: lint-posix
-          - name: linux-lint
-            os: linux
+          - toxenv: mypy
+            os: ubuntu
             python-version: 3.11
-            toxenv: mypy
-          - name: linux-integration
-            os: linux
+          - toxenv: integration
+            os: ubuntu
             python-version: 3.8
-            toxenv: integration
-          - name: apache-compat
-            os: linux
+          - toxenv: apache_compat
+            os: ubuntu
             python-version: 3.11
-            toxenv: apache_compat
-          - name: apacheconftest
-            os: linux
+          - toxenv: apacheconftest-with-pebble
+            os: ubuntu
             python-version: 3.11
-            toxenv: apacheconftest-with-pebble
-          - name: nginxroundtrip
-            os: linux
+          - toxenv: nginxroundtrip
+            os: ubuntu
             python-version: 3.11
-            toxenv: nginxroundtrip
       fail-fast: false
     runs-on: ${{ matrix.os }}-latest
     steps:
