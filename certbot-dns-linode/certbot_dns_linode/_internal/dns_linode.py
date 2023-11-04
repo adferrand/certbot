@@ -2,7 +2,6 @@
 import logging
 import re
 from typing import Any
-from typing import Callable
 from typing import cast
 from typing import Optional
 from typing import Union
@@ -23,6 +22,8 @@ class Authenticator(dns_common_lexicon.LexiconDNSAuthenticator):
     """
 
     description = 'Obtain certificates using a DNS TXT record (if you are using Linode for DNS).'
+    default_propagation_seconds = 120
+    provider_display_name = "Linode"
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -30,12 +31,6 @@ class Authenticator(dns_common_lexicon.LexiconDNSAuthenticator):
                                   'API key for Linode account, '
                                   f'obtained from {API_KEY_URL} or {API_KEY_URL_V4}',
                                   'auth_token')
-
-    @classmethod
-    def add_parser_arguments(cls, add: Callable[..., None],
-                             default_propagation_seconds: int = 120) -> None:
-        super().add_parser_arguments(add, default_propagation_seconds)
-        add('credentials', help='Linode credentials INI file.')
 
     def more_info(self) -> str:
         return 'This plugin configures a DNS TXT record to respond to a dns-01 challenge using ' + \

@@ -4,6 +4,7 @@ import logging
 import sys
 from types import ModuleType
 from typing import Any
+from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import List
@@ -168,6 +169,9 @@ class LexiconDNSAuthenticator(dns_common.DNSAuthenticator):
     as backend to execute DNS record updates
     """
 
+    default_propagation_seconds = 30
+    provider_display_name = "DNS plugin"
+
     def __init__(self, config: configuration.NamespaceConfig, name: str):
         super().__init__(config, name)
         self._provider_options: List[Tuple[str, str, str]] = []
@@ -186,6 +190,12 @@ class LexiconDNSAuthenticator(dns_common.DNSAuthenticator):
         Time to live to apply to the DNS records created by this Authenticator
         """
         return 60
+
+    @classmethod
+    def add_parser_arguments(cls, add: Callable[..., None],
+                             default_propagation_seconds: int = default_propagation_seconds) -> None:
+        super().add_parser_arguments(add, default_propagation_seconds)
+        add('credentials', help=f'{cls.provider_display_name} credentials INI file.')
 
     def _add_provider_option(self, creds_var_name: str, creds_var_label: str,
                              lexicon_provider_option_name: str) -> None:

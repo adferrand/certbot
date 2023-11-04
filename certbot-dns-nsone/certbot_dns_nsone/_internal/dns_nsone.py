@@ -1,7 +1,6 @@
 """DNS Authenticator for NS1 DNS."""
 import logging
 from typing import Any
-from typing import Callable
 from typing import Optional
 
 from requests import HTTPError
@@ -21,18 +20,13 @@ class Authenticator(dns_common_lexicon.LexiconDNSAuthenticator):
     """
 
     description = 'Obtain certificates using a DNS TXT record (if you are using NS1 for DNS).'
+    provider_display_name = "NS1"
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._add_provider_option('api-key',
                                   f'API key for NS1 API, obtained from {ACCOUNT_URL}',
                                   'auth_token')
-
-    @classmethod
-    def add_parser_arguments(cls, add: Callable[..., None],
-                             default_propagation_seconds: int = 30) -> None:
-        super().add_parser_arguments(add, default_propagation_seconds)
-        add('credentials', help='NS1 credentials file.')
 
     def more_info(self) -> str:
         return 'This plugin configures a DNS TXT record to respond to a dns-01 challenge using ' + \

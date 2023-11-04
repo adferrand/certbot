@@ -1,7 +1,6 @@
 """DNS Authenticator for DNS Made Easy DNS."""
 import logging
 from typing import Any
-from typing import Callable
 from typing import Optional
 
 from requests import HTTPError
@@ -22,6 +21,8 @@ class Authenticator(dns_common_lexicon.LexiconDNSAuthenticator):
 
     description = ('Obtain certificates using a DNS TXT record (if you are using DNS Made Easy for '
                    'DNS).')
+    default_propagation_seconds = 60
+    provider_display_name = "DNS Made Easy"
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -33,12 +34,6 @@ class Authenticator(dns_common_lexicon.LexiconDNSAuthenticator):
                                   'Secret key for DNS Made Easy account, '
                                   f'obtained from {ACCOUNT_URL}',
                                   'auth_token')
-
-    @classmethod
-    def add_parser_arguments(cls, add: Callable[..., None],
-                             default_propagation_seconds: int = 60) -> None:
-        super().add_parser_arguments(add, default_propagation_seconds)
-        add('credentials', help='DNS Made Easy credentials INI file.')
 
     def more_info(self) -> str:
         return 'This plugin configures a DNS TXT record to respond to a dns-01 challenge using ' + \
